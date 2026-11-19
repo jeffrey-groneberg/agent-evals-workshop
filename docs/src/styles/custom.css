@@ -1,0 +1,164 @@
+/* Teal accent, from the session deck's illustrations (pale sky blue, soft teal and peach). */
+:root {
+  --sl-color-accent-low: #072a28;
+  --sl-color-accent: #14b8a6;
+  --sl-color-accent-high: #ccfbf1;
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #eceff0;
+  --sl-color-gray-2: #c0c7c9;
+  --sl-color-gray-3: #8a9496;
+  --sl-color-gray-4: #566063;
+  --sl-color-gray-5: #364043;
+  --sl-color-gray-6: #232b2d;
+  --sl-color-black: #151b1d;
+  --ws-peach: #f6b48f;
+  --ws-pass: #22c55e;
+  --ws-fail: #f87171;
+  /* The Terminal theme's own brand colours and glow, in teal instead of purple. */
+  --brand-primary: #2dd4bf;
+  --brand-secondary: #0f766e;
+  --purple-hsl: 174, 72%, 45%;
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent: #2dd4bf;
+  --sl-color-accent-high: #ccfbf1;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #ccfbf1;
+  --sl-color-accent: #0f766e;
+  --sl-color-accent-high: #134e4a;
+  --sl-color-white: #151b1d;
+  --sl-color-gray-1: #232b2d;
+  --sl-color-gray-2: #364043;
+  --sl-color-gray-3: #566063;
+  --sl-color-gray-4: #8a9496;
+  --sl-color-gray-5: #c0c7c9;
+  --sl-color-gray-6: #eceff0;
+  --sl-color-black: #ffffff;
+  --ws-peach: #c2410c;
+  --ws-pass: #15803d;
+  --ws-fail: #b91c1c;
+  --brand-primary: #0f766e;
+  --brand-secondary: #115e59;
+  --purple-hsl: 174, 70%, 32%;
+}
+
+/* The theme sets the hero image's glow with !important inside its "terminal" layer. Important declarations in an
+   earlier layer win, so this override sits in Starlight's layer, which the theme declares first. */
+@layer starlight {
+  .hero > img,
+  .hero .hero-html {
+    filter: drop-shadow(0 0 36px hsla(var(--purple-hsl), 0.28)) !important;
+  }
+  :root[data-theme='light'] .hero > img,
+  :root[data-theme='light'] .hero .hero-html {
+    filter: drop-shadow(0 10px 28px hsla(var(--purple-hsl), 0.3)) !important;
+  }
+}
+
+/* Starlight's search as a bordered pill with the shortcut, and a centred dialog (as on the Work IQ lab site).
+   Unlayered, so it wins over the Starlight and Terminal layers. */
+site-search button[data-open-modal] {
+  gap: 0.5rem;
+  min-height: 2rem;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: 0.5rem;
+  background-color: var(--sl-color-bg-nav);
+  color: var(--sl-color-gray-2);
+  font-size: var(--sl-text-sm);
+  line-height: 1;
+}
+site-search button[data-open-modal]:hover {
+  border-color: var(--sl-color-accent);
+  color: var(--sl-color-white);
+}
+site-search button[data-open-modal] kbd kbd {
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.25rem;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-gray-2);
+  font-family: inherit;
+  font-size: 0.7em;
+}
+@media (min-width: 50rem) {
+  site-search dialog {
+    width: min(90vw, 600px);
+    max-height: 80vh;
+    margin: 3.5rem auto 0;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.75rem;
+    background: var(--sl-color-bg);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+}
+site-search dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+/* Illustrations: rounded, a little dimmed in dark mode, and never wider than the reading column. */
+.sl-markdown-content img {
+  border-radius: 0.75rem;
+}
+:root[data-theme='dark'] .sl-markdown-content img {
+  filter: brightness(0.92);
+}
+.sl-markdown-content figure.illustration {
+  margin: 1.5rem 0;
+}
+.sl-markdown-content figure.illustration img {
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--sl-color-hairline-light);
+}
+.sl-markdown-content figure.illustration figcaption {
+  margin-top: 0.4rem;
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-sm);
+  text-align: center;
+}
+
+/* Pass and fail marks in tables and text. */
+.pass {
+  color: var(--ws-pass);
+  font-weight: 600;
+}
+.fail {
+  color: var(--ws-fail);
+  font-weight: 600;
+}
+
+/* Tables: keep short status cells on one line. */
+.sl-markdown-content td .sl-badge,
+.sl-markdown-content td.nowrap {
+  white-space: nowrap;
+}
+
+/* The home page: the title breaks between words only. */
+.hero [data-page-title] {
+  hyphens: manual;
+}
+
+/* The author card on the home page. */
+.author-card {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: 0.75rem;
+  background: var(--sl-color-bg-nav);
+}
+.author-card p {
+  margin: 0;
+}
+.author-card .author-name {
+  color: var(--sl-color-white);
+  font-weight: 600;
+  font-size: var(--sl-text-lg);
+}

@@ -1,0 +1,118 @@
+---
+title: Set up on your computer
+description: Run the workshop locally on macOS, Linux or Windows with WSL, with Node.js 24, Git, jq, the Vally CLI and the GitHub Copilot CLI.
+---
+
+import { LinkCard, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Prefer your own machine? Everything in the workshop runs locally too. The scripts are Bash scripts, so use macOS, Linux, or Windows with [WSL](https://learn.microsoft.com/windows/wsl/install). A [Codespace](../codespaces/) remains the quickest way in.
+
+## What you need
+
+| Tool | Version | Why |
+| --- | --- | --- |
+| [Node.js](https://nodejs.org/) | 24 or later | Vally needs 22.15 or later; GitHub Copilot Evals needs 24 or later |
+| [Git](https://git-scm.com/) | 2.28 or later | Cloning, and GitHub Copilot Evals |
+| [jq](https://jqlang.org/) | any recent | Reading results in the terminal |
+| Vally CLI | 0.21.0 | The eval runner the labs were tested with |
+| GitHub Copilot CLI | latest | Hosts the GitHub Copilot Evals plugin in Lab 6 |
+| [GitHub CLI](https://cli.github.com/) | any recent | Signs the eval runner in to GitHub Copilot; pull requests in Lab 7 |
+
+## Set up
+
+<Steps>
+
+1. Install jq and the GitHub CLI if you don't have them:
+
+   <Tabs syncKey="os">
+   <TabItem label="macOS">
+   ```bash
+   brew install jq gh
+   ```
+   </TabItem>
+   <TabItem label="Linux and WSL">
+   ```bash
+   sudo apt-get update && sudo apt-get install -y jq gh
+   ```
+   </TabItem>
+   </Tabs>
+
+2. Install the Vally CLI, pinned to the version the labs were tested with, and the GitHub Copilot CLI:
+
+   ```bash
+   npm install -g @microsoft/vally-cli@0.21.0 @github/copilot
+   ```
+
+   If this fails with a network error, see [Troubleshooting](../../reference/troubleshooting/#setup).
+
+3. Sign in to GitHub with the GitHub CLI, if you haven't yet:
+
+   ```bash
+   gh auth login
+   ```
+
+   Choose **GitHub.com** and **Login with a web browser**, and enter the one-time code it shows in your browser. `gh auth status` shows the account you're signed in with. It must be an account with a Copilot plan.
+
+4. Make your own copy: open [the starter repository](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter), select **Use this template** > **Create a new repository**, and name your copy `agent-evals-workshop-starter`. Then clone your copy. Replace `<you>` with your GitHub user name:
+
+   ```bash
+   git clone https://github.com/<you>/agent-evals-workshop-starter.git
+   cd agent-evals-workshop-starter
+   ```
+
+5. Create your local settings file, `.env`, from the example:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Open `.env` in the editor. Its first setting is `COPILOT_GITHUB_TOKEN=$(gh auth token)`: each time you load the file, it asks the GitHub CLI for the token of your sign-in, so the token itself is never written into the file. Leave that line as it is. Fill in the `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL` lines only if you use [your own model endpoint](../model-access/#your-own-model-endpoint-optional); leave them empty, and the LLM judge runs on your Copilot plan. Git ignores `.env`, so nothing in it gets committed.
+
+6. Open the `agent-evals-workshop-starter` folder in VS Code (**File** > **Open Folder**) and open its terminal (**Terminal** > **New Terminal**). Load your settings into the terminal; do this in every new terminal you open for the workshop:
+
+   ```bash
+   set -a; source .env; set +a
+   ```
+
+7. Check your setup:
+
+   ```bash
+   ./scripts/check-setup.sh
+   ```
+
+   Under **GitHub Copilot sign-in**, the first line should read:
+
+   ```text
+   ✔ COPILOT_GITHUB_TOKEN, from your GitHub CLI sign-in: Vally runs the agent in a clean, isolated Copilot home
+   ```
+
+   With a token, Vally starts the agent in an empty, isolated Copilot home, so your own Copilot settings, skills and plugins can't change the results, and Copilot CLI signs in with the same token in Lab 6. If you filled in the `LLM_` lines, add `--ping`: the script then also sends one small request to your endpoint.
+
+</Steps>
+
+## If Lab 0 can't sign in
+
+If the eval in Lab 0 ends with `Not authenticated` or another sign-in error, give Vally a token of its own: a fine-grained personal access token with only the **Copilot Requests** permission. Create it as described in [Set up in a Codespace](../codespaces/#if-lab-0-cant-sign-in), steps 1 to 6. Then, in `.env`, replace the whole line `COPILOT_GITHUB_TOKEN=$(gh auth token)` with `COPILOT_GITHUB_TOKEN=`, followed by your token, and load `.env` again. Git ignores `.env`, so the token stays on your computer.
+
+## Sign in with Copilot CLI instead
+
+You can also reuse the sign-in of the Copilot CLI: run `copilot login`, then, in `.env`, comment out the `COPILOT_GITHUB_TOKEN` line and uncomment the line `# EVALUATE_USE_HOST_COPILOT_HOME=1`. Open a new terminal and load `.env` there. To switch back, undo both changes, and again open a new terminal and load `.env`.
+
+:::caution[Your own skills and plugins join the run]
+With `EVALUATE_USE_HOST_COPILOT_HOME=1`, Vally runs the agent with your real Copilot home folder, `~/.copilot`: your settings, your plugins and every skill you've installed. On a machine with many personal skills, that changes how the agent behaves. While testing this workshop, an agent with about 70 extra skills read the release-notes skill's file directly instead of invoking the skill, so the "skill was used" check failed in every trial. With a token, Vally starts each run in an empty, isolated Copilot home, and the problem disappears. Prefer the GitHub CLI sign-in.
+:::
+
+## GitHub Copilot Evals locally
+
+In Lab 6 you can use GitHub Copilot Evals in several apps on your computer:
+
+- **Copilot CLI with the Evals plugin**, exactly as in a Codespace. Lab 6 shows the commands.
+- **VS Code with the GitHub Copilot Evals extension**, which adds a visual Canvas for runs and results. It needs desktop VS Code 1.138.0 or later and a trusted local project; its bundled skills aren't available in remote, web or untrusted workspaces, so use it locally rather than in a Codespace.
+- **Visual Studio** and the **GitHub Copilot App** also have Evals packages.
+
+See [Supported apps](https://github.github.io/evals/hosts/) and [Getting started](https://github.github.io/evals/getting-started/) in the GitHub Copilot Evals docs.
+
+## Next
+
+<LinkCard title="Model access and costs" description="Where the agent and the judge run, and what you pay for." href="../model-access/" />
+<LinkCard title="Lab 0: Set up and check" description="Run one tiny real eval to prove everything works." href="../../labs/lab-0-setup/" />

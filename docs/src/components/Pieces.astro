@@ -1,0 +1,93 @@
+---
+// "The pieces you'll work with": a grid of cards, one per entity, each with a plain definition, an optional
+// everyday analogy and where the entity appears in the YAML or the output. Labels follow the page's language.
+interface Piece {
+	term: string;
+	def: string;
+	analogy?: string;
+	where?: string;
+	isNew?: boolean;
+}
+interface Props {
+	items: Piece[];
+}
+const { items } = Astro.props;
+const zh = Astro.locals.starlightRoute.lang === 'zh-CN';
+const t = zh
+	? { analogy: '打个比方', where: '在哪里看到', isNew: '新' }
+	: { analogy: 'Think of it as', where: 'Where you see it', isNew: 'new' };
+---
+
+<dl class="pieces">
+	{
+		items.map((item) => (
+			<div class="piece">
+				<dt>
+					<span set:html={item.term} />
+					{item.isNew && <span class="piece-new">{t.isNew}</span>}
+				</dt>
+				<dd>
+					<p class="piece-def" set:html={item.def} />
+					{item.analogy && (
+						<p class="piece-meta">
+							<span>{t.analogy}:</span> <span set:html={item.analogy} />
+						</p>
+					)}
+					{item.where && (
+						<p class="piece-meta">
+							<span>{t.where}:</span> <span set:html={item.where} />
+						</p>
+					)}
+				</dd>
+			</div>
+		))
+	}
+</dl>
+
+<style>
+	.pieces {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		gap: 0.75rem;
+		margin: 1.25rem 0;
+	}
+	.piece {
+		margin: 0 !important;
+		padding: 0.8rem 1rem;
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: 0.6rem;
+		background: var(--sl-color-bg-nav);
+	}
+	dt {
+		color: var(--sl-color-text-accent);
+		font-weight: 600;
+	}
+	dd {
+		margin: 0.3rem 0 0 !important;
+	}
+	dd p {
+		margin: 0.3rem 0 0 !important;
+		font-size: var(--sl-text-sm);
+		line-height: 1.5;
+	}
+	.piece-def {
+		color: var(--sl-color-gray-1);
+	}
+	.piece-meta {
+		color: var(--sl-color-gray-2);
+	}
+	.piece-meta > span:first-child {
+		color: var(--sl-color-gray-3);
+		font-weight: 600;
+	}
+	.piece-new {
+		margin-left: 0.4rem;
+		padding: 0 0.35rem;
+		border: 1px solid var(--sl-color-accent);
+		border-radius: 0.25rem;
+		color: var(--sl-color-text-accent);
+		font-size: var(--sl-text-xs);
+		font-weight: 400;
+		vertical-align: 0.1em;
+	}
+</style>

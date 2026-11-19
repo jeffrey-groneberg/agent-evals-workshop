@@ -1,0 +1,126 @@
+---
+// A left-to-right flow of steps (top to bottom on narrow screens), for diagrams with text that must be
+// translated. Each step has a short label, optional detail and a tone that colours its border.
+interface Step {
+	label: string;
+	detail?: string;
+	tone?: 'input' | 'agent' | 'grader' | 'result' | 'muted';
+}
+interface Props {
+	steps: Step[];
+	caption?: string;
+	label?: string;
+}
+const { steps, caption, label } = Astro.props;
+---
+
+<figure class="flow-figure">
+	<ol class="flow not-content" aria-label={label ?? caption}>
+		{
+			steps.map((step) => (
+				<li class:list={['flow-step', `tone-${step.tone ?? 'input'}`]}>
+					<span class="flow-label">{step.label}</span>
+					{step.detail && <span class="flow-detail">{step.detail}</span>}
+				</li>
+			))
+		}
+	</ol>
+	{caption && <figcaption>{caption}</figcaption>}
+</figure>
+
+<style>
+	.flow-step::before {
+		content: none !important;
+	}
+	.flow-figure {
+		margin: 1.5rem 0;
+	}
+	.flow {
+		display: flex;
+		flex-wrap: nowrap;
+		align-items: stretch;
+		gap: 1.6rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.flow-step {
+		position: relative;
+		flex: 1 1 0;
+		min-width: 0;
+		margin: 0 !important;
+		padding: 0.65rem 0.75rem;
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: 0.6rem;
+		background: var(--sl-color-bg-nav);
+	}
+	.flow-step:not(:last-child)::after {
+		content: '→';
+		position: absolute;
+		top: 50%;
+		right: -1.35rem;
+		transform: translateY(-50%);
+		color: var(--sl-color-gray-3);
+		font-size: 1.1rem;
+	}
+	.flow-label::before {
+		content: '';
+		display: inline-block;
+		width: 0.55rem;
+		height: 0.55rem;
+		margin-right: 0.45rem;
+		border-radius: 50%;
+		background: var(--tone);
+		vertical-align: 0.05em;
+	}
+	.flow-label {
+		display: block;
+		color: var(--sl-color-white);
+		font-weight: 600;
+		font-size: var(--sl-text-sm);
+		line-height: 1.35;
+	}
+	.flow-detail {
+		display: block;
+		margin-top: 0.3rem;
+		color: var(--sl-color-gray-2);
+		font-size: var(--sl-text-xs);
+		line-height: 1.45;
+	}
+	.tone-input {
+		--tone: var(--sl-color-gray-3);
+	}
+	.tone-agent {
+		--tone: var(--sl-color-accent);
+	}
+	.tone-grader {
+		--tone: var(--ws-peach);
+	}
+	.tone-result {
+		--tone: var(--ws-pass);
+	}
+	.tone-muted {
+		--tone: var(--sl-color-gray-5);
+		opacity: 0.8;
+	}
+	figcaption {
+		margin-top: 0.6rem;
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-sm);
+		text-align: center;
+	}
+	@media (max-width: 50rem) {
+		.flow {
+			flex-direction: column;
+			gap: 1.4rem;
+		}
+		.flow-step:not(:last-child)::after {
+			content: '↓';
+			top: auto;
+			right: auto;
+			bottom: -1.3rem;
+			left: 50%;
+			transform: translateX(-50%);
+		}
+	}
+</style>

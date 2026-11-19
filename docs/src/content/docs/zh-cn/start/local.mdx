@@ -1,0 +1,118 @@
+---
+title: 在你的计算机上搭建环境
+description: 在 macOS、Linux 或带 WSL 的 Windows 上本地运行工作坊，需要 Node.js 24、Git、jq、Vally CLI 和 GitHub Copilot CLI。
+---
+
+import { LinkCard, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+更想用自己的机器？工作坊中的所有内容也都可以在本地运行。这些脚本是 Bash 脚本，所以请使用 macOS、Linux，或带 [WSL](https://learn.microsoft.com/windows/wsl/install) 的 Windows。不过，[Codespace](../codespaces/) 仍然是最快的上手方式。
+
+## 你需要准备什么
+
+| 工具 | 版本 | 用途 |
+| --- | --- | --- |
+| [Node.js](https://nodejs.org/) | 24 或更高版本 | Vally 需要 22.15 或更高版本；GitHub Copilot Evals 需要 24 或更高版本 |
+| [Git](https://git-scm.com/) | 2.28 或更高版本 | 克隆存储库；GitHub Copilot Evals 也需要它 |
+| [jq](https://jqlang.org/) | 任意较新版本 | 在终端中读取结果 |
+| Vally CLI | 0.21.0 | 评估（eval）运行器，各个练习都用这个版本测试过 |
+| GitHub Copilot CLI | 最新版本 | 在练习 6 中承载 GitHub Copilot Evals 插件 |
+| [GitHub CLI](https://cli.github.com/) | 任意较新版本 | 把评估运行器登录到 GitHub Copilot；练习 7 中的拉取请求 |
+
+## 搭建环境
+
+<Steps>
+
+1. 如果还没有安装 jq 和 GitHub CLI，请先安装：
+
+   <Tabs syncKey="os">
+   <TabItem label="macOS">
+   ```bash
+   brew install jq gh
+   ```
+   </TabItem>
+   <TabItem label="Linux 和 WSL">
+   ```bash
+   sudo apt-get update && sudo apt-get install -y jq gh
+   ```
+   </TabItem>
+   </Tabs>
+
+2. 安装 Vally CLI（固定为测试练习时所用的版本）和 GitHub Copilot CLI：
+
+   ```bash
+   npm install -g @microsoft/vally-cli@0.21.0 @github/copilot
+   ```
+
+   如果安装因网络错误而失败，请参阅[故障排除](../../reference/troubleshooting/#安装和设置)。
+
+3. 如果还没有登录，请使用 GitHub CLI 登录 GitHub：
+
+   ```bash
+   gh auth login
+   ```
+
+   选择 **GitHub.com** 和 **Login with a web browser**，然后在浏览器中输入它显示的一次性代码。`gh auth status` 会显示你登录所用的帐户。这个帐户必须拥有 Copilot 计划。
+
+4. 创建你自己的副本：打开[起始存储库](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter)，选择 **Use this template** > **Create a new repository**，并将副本命名为 `agent-evals-workshop-starter`。然后克隆你的副本。把 `<you>` 替换为你的 GitHub 用户名：
+
+   ```bash
+   git clone https://github.com/<you>/agent-evals-workshop-starter.git
+   cd agent-evals-workshop-starter
+   ```
+
+5. 从示例文件创建你的本地设置文件 `.env`：
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   在编辑器中打开 `.env`。它的第一项设置是 `COPILOT_GITHUB_TOKEN=$(gh auth token)`：每次加载这个文件时，它都会向 GitHub CLI 询问你登录所用的令牌，因此令牌本身永远不会写进文件。请保持这一行不变。只有在使用[你自己的模型终结点](../model-access/#你自己的模型终结点可选)时，才需要填写 `LLM_BASE_URL`、`LLM_API_KEY` 和 `LLM_MODEL` 这几行；如果留空，LLM 评审就会使用你的 Copilot 计划运行。Git 会忽略 `.env`，所以其中的任何内容都不会被提交。
+
+6. 在 VS Code 中打开 `agent-evals-workshop-starter` 文件夹（**File** > **Open Folder**），并打开它的终端（**Terminal** > **New Terminal**）。把你的设置加载到终端中；在为工作坊打开的每个新终端中，都要执行这一步：
+
+   ```bash
+   set -a; source .env; set +a
+   ```
+
+7. 检查你的环境：
+
+   ```bash
+   ./scripts/check-setup.sh
+   ```
+
+   在 **GitHub Copilot sign-in** 下，第一行应该是：
+
+   ```text
+   ✔ COPILOT_GITHUB_TOKEN, from your GitHub CLI sign-in: Vally runs the agent in a clean, isolated Copilot home
+   ```
+
+   使用令牌时，Vally 会在一个空的、隔离的 Copilot 主目录中启动智能体，因此你自己的 Copilot 设置、技能和插件都无法影响结果；在练习 6 中，Copilot CLI 也会使用同一个令牌登录。如果你填写了 `LLM_` 开头的那几行，请加上 `--ping`：这样脚本还会向你的终结点发送一个小请求。
+
+</Steps>
+
+## 如果练习 0 无法登录
+
+如果练习 0 中的评估以 `Not authenticated` 或其他登录错误结束，请给 Vally 一个专用的令牌：一个只有 **Copilot Requests** 权限的细粒度个人访问令牌。按照[在 Codespace 中搭建环境](../codespaces/#如果练习-0-无法登录)中的步骤 1 到 6 创建它。然后在 `.env` 中，把整行 `COPILOT_GITHUB_TOKEN=$(gh auth token)` 替换为 `COPILOT_GITHUB_TOKEN=` 加上你的令牌，并重新加载 `.env`。Git 会忽略 `.env`，所以令牌只会留在你的计算机上。
+
+## 改用 Copilot CLI 登录
+
+你也可以复用 Copilot CLI 的登录：运行 `copilot login`，然后在 `.env` 中注释掉 `COPILOT_GITHUB_TOKEN` 这一行，并取消注释 `# EVALUATE_USE_HOST_COPILOT_HOME=1` 这一行。打开一个新终端，并在其中加载 `.env`。要切换回来，请撤销这两处更改，然后同样打开一个新终端并加载 `.env`。
+
+:::caution[你自己的技能和插件也会参与运行]
+设置 `EVALUATE_USE_HOST_COPILOT_HOME=1` 后，Vally 会使用你真实的 Copilot 主目录 `~/.copilot` 来运行智能体，其中包括你的设置、你的插件，以及你安装的每一个技能（skill）。在装有大量个人技能的机器上，这会改变智能体的行为。在测试本工作坊时，一个额外装有约 70 个技能的智能体没有调用发布说明技能，而是直接读取了该技能的文件，因此“技能已被使用”这项检查在每次试验中都失败了。使用令牌时，Vally 会在一个空的、隔离的 Copilot 主目录中开始每次运行，这个问题也就不复存在。请优先使用 GitHub CLI 登录。
+:::
+
+## 在本地使用 GitHub Copilot Evals
+
+在练习 6 中，你可以在自己计算机上的多个应用中使用 GitHub Copilot Evals：
+
+- **装有 Evals 插件的 Copilot CLI**，用法与在 Codespace 中完全相同。练习 6 中给出了相关命令。
+- **装有 GitHub Copilot Evals 扩展的 VS Code**，它会添加一个可视化的 Canvas，用于查看运行和结果。它需要桌面版 VS Code 1.138.0 或更高版本，以及一个受信任的本地项目；它内置的技能在远程、Web 或不受信任的工作区中不可用，所以请在本地使用它，而不是在 Codespace 中使用。
+- **Visual Studio** 和 **GitHub Copilot App** 也有 Evals 包。
+
+请参阅 GitHub Copilot Evals 文档中的[支持的应用](https://github.github.io/evals/hosts/)和[入门](https://github.github.io/evals/getting-started/)。
+
+## 下一步
+
+<LinkCard title="模型访问与费用" description="智能体和评审在哪里运行，以及你需要为什么付费。" href="../model-access/" />
+<LinkCard title="练习 0：设置与检查" description="运行一个很小的真实评估，确认一切正常。" href="../../labs/lab-0-setup/" />

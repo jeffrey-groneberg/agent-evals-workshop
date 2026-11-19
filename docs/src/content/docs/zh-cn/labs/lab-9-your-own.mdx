@@ -1,0 +1,77 @@
+---
+title: '练习 9：你自己的智能体'
+description: 把完整的循环应用到你自己构建的技能、指令集或 MCP 工具上，从定义“好”的标准一直到在 CI 中运行。
+sidebar:
+  label: '9. 你自己的智能体'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../../components/LabMeta.astro';
+import EvalMap from '../../../../components/EvalMap.astro';
+
+<LabMeta time="45 分钟或更长，自定进度" cost="由你决定" uses="lab-files/lab-9/my-first.eval.yaml" />
+
+<figure class="illustration">
+  ![一张绘图桌上铺着一张大大的评估模板：上面是空的复选框和横线，第一个复选框正被一支笔勾选。四周散放着构建评估的积木：卡片、放大镜、清单、一个小小的玻璃工作区盒子，以及桃色的评审机器人。一个小机器人站在底座上，等待接受测试。](../../../../assets/labs/lab-9.jpg)
+  <figcaption>同样的循环，应用到你自己的智能体上。</figcaption>
+</figure>
+
+release-notes 技能（skill）只是练手。现在，把同样的循环应用到你自己构建的东西上：团队在用的技能、你的智能体的自定义指令，或者一个 MCP 工具。
+
+<EvalMap
+  doing="把完整的循环应用到你自己的智能体或技能上，从定义“好”的标准，一直到在 CI 中为它把关。"
+  testing="你自己的智能体、技能、自定义指令或工具"
+  checking="你自己的检查项：先用代码检查，只在必要时使用经过校准的 LLM 评审"
+  task={{ text: '你的智能体真正会收到的任务', state: 'new' }}
+  agent={{ text: '你的智能体', state: 'new' }}
+  environment={{ text: '你的技能和文件', state: 'new' }}
+  trials={{ text: '3 次或更多' }}
+  checks={{ text: '你自己的：答案、运行记录、工作区', state: 'new' }}
+  judge={{ text: '可选，需先校准' }}
+  results={{ text: '同样的文件和仪表板' }}
+/>
+
+## 选好第一个目标
+
+挑选一个**经常用到**、**规模小**，而且**以前失败过**的对象，最好你还记得它当时是怎么失败的。好的第一个任务要有明确的正确答案，两位同事都会认同。避免那些“好不好”主要取决于个人品味的任务；等你有了经过校准的 LLM 评审，再加入这类任务。
+
+## 再走一遍循环
+
+<Steps>
+
+1. **定义“好”**（练习 1）。在运行任何东西之前，写下四到六条标准，其中至少包含一条“绝不能”。标出哪些标准可以用代码检查。
+
+2. **起草评估（eval）**。从模板开始，或者让 Copilot 来起草（练习 6），然后对照你的标准审查草稿：
+
+   ```bash
+   cp lab-files/lab-9/my-first.eval.yaml evals/
+   ```
+
+   替换每一个 `TODO`：技能的文件夹、它需要的文件、一个贴近实际的提示词，以及对应你的标准的检查项。
+
+3. **检查你的检查项**（练习 2）。复制一份并设置 `executor: mock`，把一个已知正确的答案和一个已知错误的答案放进提示词，确认判定结果符合预期。在这份副本中只保留针对答案的检查项：使用模拟执行器（mock）的运行不会调用工具，也不会修改文件，所以针对运行记录（transcript）的检查项（例如 `skill-invocation`）在那里无法通过。
+
+4. **运行试验**（练习 3）：先运行 `vally lint -e evals/my-first.eval.yaml --strict`，再运行 `vally eval -e evals/my-first.eval.yaml`。要阅读运行记录，而不只是看通过率。
+
+5. **修复并证明**（练习 4）。只改动一处，然后用实验进行比较。
+
+6. **评判代码无法评判的内容**（练习 5）。只针对需要判断的标准添加评分标准（rubric）和 LLM 评审，并且先校准评审。
+
+7. **为它把关**（练习 7）。给评估加上 `lane: ci` 标签，让每个拉取请求都运行它。
+
+</Steps>
+
+## 来自工作坊的建议
+
+- **不要在提示词中点明技能或答案**。写出真实用户会输入的请求。
+- **为你见过的每个 bug 添加一个否定检查**。bug 往往表现为多出了某些东西。
+- **在关键之处检查运行记录和工作区**，而不只是检查答案。
+- **保持运行相互隔离**。使用令牌登录，而不是使用 `EVALUATE_USE_HOST_COPILOT_HOME=1`，这样你自己的技能和设置就不会混入运行中。
+- **先从 3 次试验开始**；在做出任何重要决定之前，要运行更多次试验。
+- **把每一次真实的失败都变成新的任务或对照用例**。你的评估每抓到一个 bug，就会变得更好一些。
+
+## 延伸阅读
+
+- Vally 文档中的[编写评估规范](https://microsoft.github.io/vally/guides/writing-eval-specs/)。
+- GitHub Copilot Evals 文档中的[运行你的第一个评估](https://github.github.io/evals/journeys/first-eval/)。
+- 更多练习和完整示例，请参阅[延伸学习和参考资料](../../reference/further-learning/)。

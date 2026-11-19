@@ -1,0 +1,44 @@
+---
+title: 术语表
+description: 工作坊中用到的每个术语，附有简明的定义、你会在哪里遇到它，以及中文页面中使用的对应术语。
+---
+
+本工作坊中的术语，按英文字母顺序排列。最后一列是中文页面中使用的对应术语；本页也有[英文版](../../../concepts/glossary/)。代码、YAML 键和命令名称在两种语言中都保持英文。
+
+| 英文术语 | 含义 | 中文 |
+| --- | --- | --- |
+| **Agent under test** | 评估（eval）要衡量其行为的 AI 智能体：一个模型，加上它的指令和工具。在练习中，它是带有 release-notes 技能的 GitHub Copilot。 | 被测智能体 |
+| **Baseline** | 用来与变更进行对比的版本：实验中的“之前”。 | 基线 |
+| **Capability eval** | 回答“智能体现在能做到这件事了吗？”的评估。它的通过率一开始可能很低。 | 能力评估 |
+| **Check** | GitHub Copilot Evals 界面中对评分器的称呼。 | 检查项 |
+| **Code grader** | 不借助模型、精确检查某项内容的评分器，例如 `output-contains`。快速、免费、结果确定。 | 代码评分器 |
+| **Control** | 你已经知道是好是坏的答案，用来测试你的评分器。使用模拟执行器（mock）运行。 | 对照用例 |
+| **Environment** | 试验开始时智能体所面对的一切：技能、文件、设置。Vally 会为每次试验重新构建它。在 YAML 中写作 `agent_environment`。 | 环境 |
+| **Eval** | 针对会变化的输出所做的可重复测试：由任务、环境、评分器和设置组成。 | 评估（eval） |
+| **Eval spec** | 描述一个评估的 YAML 文件，例如 `evals/release-notes.eval.yaml`。 | 评估规范文件 |
+| **Evidence** | 评分器报告的判定理由，例如“'CT-102' found in output”。 | 证据 |
+| **Executor** | Vally 中负责运行智能体的部分。`copilot-sdk` 运行 GitHub Copilot；`mock` 不运行任何模型。 | 执行器 |
+| **Experiment** | 对同一个评估的多个变体进行的受控比较，这些变体只在声明过的设置上有所不同。 | 实验 |
+| **Flaky** | 试验时而通过、时而失败的任务。这是行为不可靠的信号，而不是错误。 | 不稳定 |
+| **GitHub Copilot Evals** | GitHub 的评估助手（预览版）：Copilot 帮你创建、审查、改进、运行和比较评估，这些评估在 Vally 中运行。 | GitHub Copilot Evals |
+| **Grader** | 对试验的答案、运行记录或工作区进行的一项测试。返回通过或失败、分数和证据。 | 评分器 |
+| **Judge provider** | LLM 评审使用的终结点和密钥（“自带密钥”）。在 YAML 中写作 `judge_provider`。 | 评审模型提供方 |
+| **LLM judge** | 让第二个模型依据评分标准为答案评分的评分器。在 Vally 中写作 `type: prompt`。 | LLM 评审 |
+| **Mock executor** | 不调用任何模型、直接把提示词文本作为答案返回的执行器。用于对照用例：免费、即时、结果确定。 | 模拟执行器（mock） |
+| **Negative check** | 当某些内容不存在时才通过的检查项。在 Vally 中写作 `negate: true`。 | 否定检查 |
+| **Outcome** | 一次试验的产出：最终答案，以及试验结束后工作区的状态。 | 产出结果 |
+| **Param** | 评估文件中的占位符，例如 `${JUDGE_BASE_URL}`，通过 `--param` 或默认值填入。 | 参数（param） |
+| **pass@k** | “Pass at k”：给智能体 k 次机会，它到底能不能做到？在 Vally 的报告中，k 是试验次数，因此只要至少有一次试验通过，pass@k 就为 1，否则为 0。 | pass@k |
+| **pass^k** | “Pass hat k”：连续 k 次运行全部通过的估计概率，即 p<sup>k</sup>，其中 p 是通过率。“我能依赖它吗？” | pass^k |
+| **Pass rate** | 通过的试验所占的比例，例如 3 次中有 2 次通过。 | 通过率 |
+| **Regression eval** | 回答“智能体还能做到它以前能做到的事吗？”的评估。它的通过率应该接近 100%。 | 回归评估 |
+| **Rubric** | LLM 评审所依据的书面评判标准，每行一条。在 YAML 中写作 `rubric`。 | 评分标准（rubric） |
+| **Score** | 0 到 1 之间的数字。可以是某个评分器的分数，也可以是某次试验的分数，即该试验各评分器分数的平均值。 | 分数 |
+| **Skill** | 包含 `SKILL.md` 文件的文件夹：智能体为某类任务加载的指令。 | 技能（skill） |
+| **Stimulus** | Vally 对单个任务的称呼：提示词以及该任务特有的一切。在 YAML 中写作 `stimuli`。 | 任务（stimulus） |
+| **Suite** | 一组有名称、一起运行的评估。在 `.vally.yaml` 中定义，用 `--suite` 运行。 | 套件 |
+| **Threshold** | 试验通过所需的分数。设置 `threshold: 1` 时，每个检查项都必须通过。 | 阈值 |
+| **Transcript** | 一次试验的完整记录：消息、工具调用、结果、token。Vally 称之为 trajectory。 | 运行记录（transcript） |
+| **Trial** | 某个任务的一次运行。你会运行多次，因为智能体的表现会有波动。 | 试验（trial） |
+| **Vally** | Microsoft 的 AI 评估平台；本工作坊中运行所有评估的命令行引擎。 | Vally |
+| **Variant** | 实验中某个评估的一个版本，带有一处有意的修改。 | 变体 |

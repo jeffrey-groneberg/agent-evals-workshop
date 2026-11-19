@@ -1,0 +1,69 @@
+---
+title: GitHub Copilot Evals 速查表
+description: 如何在 Copilot CLI 中安装和更新 GitHub Copilot Evals 插件，六个技能及示例请求，以及运行和审批时会发生什么。
+---
+
+GitHub Copilot Evals 目前处于预览阶段，插件会频繁发布新版本。完整文档：[github.github.io/evals](https://github.github.io/evals/)。
+
+## 在 Copilot CLI 中安装
+
+一次运行一条命令；如果某条命令失败，请停下来：
+
+```bash
+copilot plugin marketplace add github/evals
+copilot plugin install eval@github-copilot-evals
+copilot plugin list --json          # "eval" from "github-copilot-evals", "enabled": true
+```
+
+如果你在 Copilot 对话中，请改用 `/plugin marketplace add github/evals` 和 `/plugin install eval@github-copilot-evals`。无论用哪种方式，完成后都要开始一个新对话。
+
+## 更新
+
+```bash
+copilot plugin marketplace update github-copilot-evals
+copilot plugin update eval@github-copilot-evals
+```
+
+你可以关闭插件，之后再重新启用。例如，关闭插件可以防止它混入使用你的 Copilot 主目录的评估（eval）运行：
+
+```bash
+copilot plugin disable eval@github-copilot-evals
+copilot plugin enable eval@github-copilot-evals
+```
+
+## 六个技能
+
+| 技能（skill） | 示例请求 |
+| --- | --- |
+| **create** | “为 .github/skills/release-notes 中的 release-notes 技能创建一个评估。” |
+| **review** | “审查 evals/release-notes.eval.yaml 中的评估及其已保存的结果。” |
+| **improve** | “为这个评估添加一个失败用例，并保存一份修订后的副本。” |
+| **run** | “运行这个评估。” |
+| **compare** | “比较这个评估最近两次保存的运行。” |
+| **setup** | “Set up the eval runner for this project with Node and Vally only, without a Copilot executable path.” 也可以设置评估路径和测试套件。 |
+
+直接用自然语言提出请求即可。在 Copilot CLI 的实验模式下（先输入 `/experimental`，再开始一个新对话），这些技能也可以作为命令使用：`/eval create`、`/eval review`、`/eval improve`、`/eval run`、`/eval compare`、`/eval setup` 和 `/eval help`。
+
+## 使用须知
+
+- **审批**：每个操作都需要回答两次：Copilot CLI 先询问 Copilot 能否使用某个工具，然后插件会显示一份审核内容，准确说明将要发生什么，并请你只批准这一个操作。审核内容会等待约三分钟。Copilot 在保存之前会显示完整的文件；每次运行都需要单独审批，保存文件永远不会启动运行。
+- **运行器设置**：在对话开始时，请 Copilot 只用 Node 和 Vally 来设置评估运行器。如果指定了 Copilot 可执行文件路径，而你的 Copilot CLI 更新（例如 1.0.114），那么使用 Vally 0.21.0 的运行会以 `SDK protocol version mismatch` 失败。
+- **登录**：运行使用 GitHub CLI 已存储的登录凭据；Copilot CLI 会对插件隐藏令牌变量。在你的计算机上，`gh auth login` 会存储一个登录凭据。在 Codespace 中，请存储 Codespace 的令牌：`echo "$GITHUB_TOKEN" | env -u GITHUB_TOKEN gh auth login --with-token`。
+- **免费步骤和付费步骤**：验证、读取已保存的结果以及比较已保存的运行，都不会调用模型。起草、审查和运行则会使用你的 Copilot 计划。
+- **两种运行器**：由评估文件决定。**受限运行器**每个任务运行 1 次试验，最多 10 个任务、每个任务最多 10 个检查项，每个任务限时 60 或 120 秒，并且不接受 LLM 评审、设置命令或命令检查；它会增加一套工具策略和一份很短的允许程序列表，但它并不是沙盒。多次试验或评审需要 Vally 的**完整引擎**，它没有工具策略，也没有沙盒，并会要求单独审批。自定义模型提供方（你自己的终结点）和远程 MCP 服务器两种运行器都不支持：请改用 `vally eval`。请参阅 [Copilot 如何运行评估](../../labs/lab-6-copilot-evals/#copilot-如何运行评估)。
+- **结果**：运行会把 Vally 的文件保存在 `vally-results/eval-run-<id>/<date-and-time>/` 中：有 `eval-results.md` 和各次试验的文件夹，但没有 `results.jsonl`，所以仪表板和 `answers.sh` 不会显示它。Copilot Evals 把自己的记录保存在 `.copilot/evals/results/` 中。
+- **与 Vally 使用相同的文件**：Copilot 写出的所有内容都是普通的 `*.eval.yaml` 文件，你可以用 Vally 对它进行 lint 检查并运行。
+
+## 其他应用
+
+| 应用 | 使用方式 |
+| --- | --- |
+| VS Code（桌面版，1.138.0 或更高版本） | GitHub Copilot Evals 扩展；在命令面板中运行 **GitHub Copilot Evals: Open Evals Canvas** |
+| Visual Studio 2022（17.14+）或 2026 | Visual Studio 扩展 |
+| GitHub Copilot App | 插件和 Canvas |
+
+参见[支持的应用](https://github.github.io/evals/hosts/)。
+
+## CI
+
+`github/evals-action@v0` 会对你的项目执行 lint 检查、运行一个套件，并在拉取请求中发布一条持续更新的评论。参见[练习 7](../../labs/lab-7-ci/) 和 [CI 设置指南](https://github.github.io/evals/journeys/ci-setup/)。

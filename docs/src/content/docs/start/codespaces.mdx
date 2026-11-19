@@ -1,0 +1,120 @@
+---
+title: Set up in a Codespace
+description: Make your own copy of the starter repository and open it in a GitHub Codespace, with everything installed and Copilot sign-in included.
+---
+
+import { LinkCard, Steps } from '@astrojs/starlight/components';
+
+A [GitHub Codespace](https://docs.github.com/codespaces/overview) is a development environment in the cloud: VS Code in your browser, with a Linux terminal. The workshop's Codespace comes with Node.js 24, the Vally CLI 0.21.0, the GitHub Copilot CLI, jq and the GitHub CLI already installed, and it signs the eval runner in to GitHub Copilot for you. You install nothing on your computer, and you don't create a token.
+
+Plan about 5 minutes. You can do both steps before the workshop.
+
+## 1. Make your own copy of the repository
+
+This site lives in one repository. The files you work with live in another, the **starter repository**, which you copy.
+
+<Steps>
+
+1. Open the starter repository: [jeffrey-groneberg/agent-evals-workshop-starter](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter).
+
+2. Select **Use this template** > **Create a new repository**.
+
+3. Choose your personal account as the owner, name it `agent-evals-workshop-starter`, choose **Private** or **Public**, and select **Create repository**.
+
+</Steps>
+
+Your copy keeps your work after the workshop, and you need it for [Lab 7](../../labs/lab-7-ci/), where GitHub Actions runs your evals on pull requests. Keeping the starter repository's name tells your copy apart from this site's repository, `agent-evals-workshop`, and gives your folder the same name as a Codespace opened straight on the starter repository.
+
+:::note[In a hurry?]
+You can also open a Codespace straight on the starter repository with the **Open in GitHub Codespaces** button in its README. That's fine for every lab except Lab 7. If you later want to keep your work, GitHub offers to create a fork when you push.
+:::
+
+## 2. Create the Codespace
+
+<Steps>
+
+1. On **your** repository's page, select **Code** > **Codespaces** > **Create codespace on main**.
+
+2. The browser opens VS Code, and the terminal runs the setup: it installs the Vally CLI and the GitHub Copilot CLI. Wait until it prints `Workshop setup complete`. That takes two to four minutes.
+
+3. In the terminal, run the setup check:
+
+   ```bash
+   ./scripts/check-setup.sh
+   ```
+
+   It ends like this:
+
+   ```text
+   GitHub Copilot sign-in (for the agent under test and the LLM judge)
+     ✔ Your Codespace's own token (GITHUB_TOKEN): Vally runs the agent in a clean, isolated Copilot home
+     ✔ Agent model in the eval files: claude-sonnet-5.5 (not on your plan? scripts/use-model.sh <model>)
+     ✔ LLM judge in Lab 5: gpt-5.6-luna, on your Copilot plan (another model: --param JUDGE_MODEL=<model>)
+         The real test: vally eval -e lab-files/lab-0/setup-check.eval.yaml (one Copilot request)
+
+   Your own model endpoint (optional: without one, the judge runs on your Copilot plan)
+     ✔ Not set, and not needed
+
+   Ready.
+   ```
+
+   The check makes no network calls. The real test of your sign-in is the tiny eval in [Lab 0](../../labs/lab-0-setup/).
+
+</Steps>
+
+## How the eval runner signs in
+
+The agent you evaluate is GitHub Copilot, and the LLM judge in Lab 5 runs on Copilot too. So Vally, the eval runner, sends requests to Copilot for you, and it needs a token to do that.
+
+Your Codespace already has one. GitHub gives every Codespace its own token, in the `GITHUB_TOKEN` variable of its terminals: a new one each time the Codespace starts or restarts, and it expires on its own. The token acts as you, so Copilot accepts it, and the requests count toward your Copilot plan like your own use of Copilot. Vally finds the token by itself, and so does the GitHub Copilot CLI, so you won't need `copilot login` in Lab 6 either.
+
+Signing in with a token also keeps every run clean. Vally starts the agent in an empty, isolated Copilot home, so your personal Copilot settings, skills and plugins can't change the results; you'll see in [Lab 3](../../labs/lab-3-run-the-agent/#why-a-clean-environment-matters) how much that matters. Vally also removes `COPILOT_GITHUB_TOKEN`, `GH_TOKEN` and `GITHUB_TOKEN` from the environment of every command the agent runs, so the token isn't handed to the agent. The agent's commands still run as you, though, so evaluate only agents and skills you trust.
+
+## If Lab 0 can't sign in
+
+If the eval in Lab 0 ends with `Not authenticated` or another sign-in error, give Vally a token of its own: a fine-grained personal access token that may only send requests to Copilot.
+
+<Steps>
+
+1. Open [Fine-grained personal access tokens](https://github.com/settings/personal-access-tokens/new).
+
+2. Give the token a name, such as `agent-evals-workshop`, and an expiration, such as 30 days.
+
+3. Under **Resource owner**, select your **personal account**, not an organization. The Copilot Requests permission exists only on tokens your personal account owns.
+
+4. Under **Repository access**, keep **Public repositories**. The token doesn't need access to any repository.
+
+5. Under **Permissions**, open the **Account** tab, select **Add permissions**, and choose **Copilot Requests**.
+
+6. Select **Generate token** and copy it. You see it only once. It starts with `github_pat_`.
+
+7. Store it as a Codespaces secret named `COPILOT_GITHUB_TOKEN`, as described in [Add or change a secret](#add-or-change-a-secret), and restart the Codespace. Vally uses `COPILOT_GITHUB_TOKEN` before `GITHUB_TOKEN`, and the setup check now reports `COPILOT_GITHUB_TOKEN, a fine-grained personal access token`.
+
+</Steps>
+
+:::caution[Keep the token secret]
+Treat it like a password: don't paste it into files, chats or screenshots, and never commit it. GitHub encrypts Codespaces secrets and puts them only into your own Codespaces. Delete the token after the workshop if you don't need it any more.
+:::
+
+## Add or change a secret
+
+Open [Codespaces settings](https://github.com/settings/codespaces), and under **Secrets**, select **New secret** (or update an existing one). Enter the secret's name, such as `COPILOT_GITHUB_TOKEN`, paste the value, and under **Repository access**, select your copy of the starter repository. A running Codespace picks up the change after a restart: in VS Code, open the Command Palette and run **Codespaces: Stop Current Codespace**, then open it again from your repository's **Code** > **Codespaces** menu.
+
+**Using your own model endpoint for the judge?** That's optional; see [Model access and costs](../model-access/#your-own-model-endpoint-optional). Add three secrets the same way, `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL`, and restart the Codespace. Then run `./scripts/check-setup.sh --ping`, which also sends one small request to your endpoint.
+
+For a quick test in the current terminal only, you can also set a value without it showing on screen or in your shell history:
+
+```bash
+read -rs LLM_API_KEY && export LLM_API_KEY
+```
+
+Paste the key, press Enter, and the variable is set until you close that terminal. This also works in a Codespace opened straight on the starter repository, where GitHub doesn't add your secrets, because you can't write to that repository.
+
+## When you're done
+
+Stop the Codespace when you take a break, and delete it when you've finished the workshop: **Code** > **Codespaces** > **...** > **Delete**. A stopped Codespace uses no compute, but its storage still counts. Personal GitHub accounts include a monthly allowance of free Codespaces use; see [About billing for GitHub Codespaces](https://docs.github.com/billing/managing-billing-for-your-products/managing-billing-for-github-codespaces/about-billing-for-github-codespaces).
+
+## Next
+
+<LinkCard title="Model access and costs" description="Where the agent and the judge run, and what you pay for." href="../model-access/" />
+<LinkCard title="Lab 0: Set up and check" description="Run one tiny real eval to prove everything works." href="../../labs/lab-0-setup/" />

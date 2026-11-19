@@ -1,0 +1,292 @@
+---
+title: '练习 2：检查你的检查项'
+description: 用 Vally 的模拟执行器把已知正确和已知错误的答案交给你的检查项，找出一个盲点并修复它，全程不调用任何模型。
+sidebar:
+  label: '2. 检查你的检查项'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../../components/LabMeta.astro';
+import EvalMap from '../../../../components/EvalMap.astro';
+import Pieces from '../../../../components/Pieces.astro';
+import Flow from '../../../../components/Flow.astro';
+
+<LabMeta time="15 分钟" cost="无：模拟执行器（mock）不调用任何模型" uses="evals/release-notes-control.eval.yaml" />
+
+<figure class="illustration">
+  ![一张校准工作台：一架配有校准砝码的天平；传送带上的四张答案卡片依次穿过一座装有放大镜的检测拱门，两张带着绿色对勾离开，两张带着珊瑚色叉号离开。青绿色的机器人在扶手椅里睡觉，因为本练习不运行任何智能体。](../../../../assets/labs/lab-2.jpg)
+  <figcaption>先检验测量仪器：用已知答案看看你的检查项能否放行好答案、拦下坏答案。</figcaption>
+</figure>
+
+现在，你在练习 1 中定下的标准要变成检查项了。不过，在让它们给真正的智能体评分之前，你要先证明它们确实有效：把判定结果已知的答案交给它们，看看它们的结论是否与你一致。你会发现起始存储库自带的检查项有一个盲点，然后亲手修复它。
+
+<EvalMap
+  doing="把四个已知答案交给你的检查项，找出它们的盲点，并用一个否定检查修复它。"
+  testing="你的检查项：能否让好答案通过、让坏答案失败？"
+  checking="针对答案的代码检查项：包含 CT-101、包含 CT-103，以及新增的“不包含 CT-102”"
+  task={{ text: '四个已知答案，以提示词的形式写成', state: 'new' }}
+  agent={{ text: '模拟执行器：不调用模型，提示词直接成为答案', state: 'changed' }}
+  trials={{ text: '每个答案 1 次：模拟执行器的结果永远不变' }}
+  checks={{ text: '<code>output-contains</code>，肯定检查和否定检查', state: 'new' }}
+  results={{ text: '终端、<code>--verbose</code>、试验记录、仪表板' }}
+/>
+
+## 你将用到的要素
+
+<Pieces
+  items={[
+    { term: '对照用例', def: '一个你已经知道判定结果的答案：已知正确的答案必须通过，已知错误的答案必须失败。对照用例测试的是你的检查项，而不是智能体。', analogy: '校准秤用的标准砝码', where: '<code>evals/release-notes-control.eval.yaml</code> 中的每个任务（stimulus）', isNew: true },
+    { term: '模拟执行器（mock）', def: '一种不调用任何模型的执行器。它把每个任务的提示词文本当作“答案”返回，所以检查项评判的正是你写下的文字。免费、快速，而且每次都一样。', analogy: '回放固定答案的测试替身', where: '<code>defaults</code> 下的 <code>executor: mock</code>', isNew: true },
+    { term: '任务（stimulus）', def: '一个任务。使用模拟执行器时，它的 <code>prompt</code> 就是你的已知答案，一字不差。', analogy: '一个测试用例', where: '<code>stimuli:</code> 下的每一项，各有一个 <code>name</code>', isNew: true },
+    { term: '评分器 <code>output-contains</code>', def: '一种代码检查项：答案包含指定文本时通过。默认不区分大小写。', analogy: '<code>assertContains</code>', where: '<code>type: output-contains</code>，<code>config: { substring: … }</code>', isNew: true },
+    { term: '否定检查', def: '同一个检查项，但结果取反：文本不存在时通过。', analogy: '<code>assertNotContains</code>', where: '配置中的 <code>negate: true</code>', isNew: true },
+    { term: '阈值', def: '试验通过所需的分数。每次试验的分数是其所有检查项分数的平均值；设置 <code>threshold: 1</code> 时，每个检查项都必须通过。', analogy: '及格线', where: '<code>scoring.threshold</code>', isNew: true },
+  ]}
+/>
+
+## 为什么使用模拟执行器？
+
+在本练习中，你不希望由智能体来写答案：你要的是**你自己的**答案，有好有坏，这样你才清楚检查项应该得出什么结论。模拟执行器正好能做到这一点。它完全跳过智能体，把提示词文本直接交给评分器：
+
+<Flow
+  label="一次普通试验"
+  steps={[
+    { label: '普通试验', detail: 'executor: copilot-sdk（从练习 3 起）', tone: 'muted' },
+    { label: '提示词', detail: '“Write the release notes …”', tone: 'input' },
+    { label: '智能体工作', detail: 'Copilot 读取文件，写出答案', tone: 'agent' },
+    { label: '检查项', detail: '给智能体的答案评分', tone: 'grader' },
+  ]}
+/>
+
+<Flow
+  label="本练习中的一次对照试验"
+  steps={[
+    { label: '对照试验', detail: 'executor: mock（本练习）', tone: 'muted' },
+    { label: '提示词', detail: '你的已知答案，一字不差', tone: 'input' },
+    { label: '没有模型', detail: '提示词文本直接成为答案', tone: 'muted' },
+    { label: '检查项', detail: '给你的已知答案评分', tone: 'grader' },
+  ]}
+/>
+
+这带来了四点真实智能体给不了的好处：
+
+- **原因明确**。如果某个对照用例得到了错误的判定结果，那就是检查项错了，因为没有其他因素参与。以后真实试验失败时，你就知道问题出在智能体，而不是检查项。
+- **零成本**。不用模型，不耗 token，也不消耗 Copilot 请求。
+- **速度快**。没有模型，也就无需等待：一次对照运行只需几秒，你可以改一个检查项，然后重跑 20 次。
+- **每次结果都相同**。对照用例的结果是确定的，所以结果一旦变化，必然意味着你的检查项变了。
+
+但它**不会**告诉你任何关于智能体的信息。它测试的是你的测量仪器。智能体要到练习 3 才登场。
+
+:::tip[最佳实践，而非工作坊里的小技巧]
+GitHub Copilot Evals 发布了一个[无模型的发布说明对照评估（eval）](https://github.github.io/evals/examples/release-note-control.eval.yaml)，工作方式与本练习中的这个完全相同，还提供了一个[在 GitHub Actions 中运行它的工作流](https://github.github.io/evals/examples/eval-controls.yml)。Vally 提供 [`vally oracle`](https://microsoft.github.io/vally/reference/cli/oracle/)，把同样的思路用在文件改动上；Anthropic 也建议[为每个任务准备一个参考解法](https://www.anthropic.com/research/demystifying-evals-for-ai-agents)。参见[评分器：检查你的检查项](../../concepts/graders/#检查你的检查项)。
+:::
+
+## 步骤
+
+<Steps>
+
+1. 在编辑器中打开 `evals/release-notes-control.eval.yaml`。它包含四个任务，每个都是一个已知答案：
+
+   | 任务 | 答案内容 | 预期结果 |
+   | --- | --- | --- |
+   | `known-good-answer` | CT-101 和 CT-103，外加一句摘要 | 通过 |
+   | `acceptable-alternative` | 相同的条目，但换了顺序和措辞 | 通过 |
+   | `wrong-answer` | CT-101、CT-102 和 CT-103：宣布了尚未完成的工作 | 失败 |
+   | `empty-answer` | “Nothing new to announce in this release.” | 失败 |
+
+   目前每个任务有两个检查项：“包含 CT-101”和“包含 CT-103”。也看看文件顶部：`executor: mock`、`runs: 1`（模拟答案永远不变，所以一次试验就够了）和 `threshold: 1`。
+
+2. 先不运行，检查一下文件中有没有错误：
+
+   ```bash
+   vally lint -e evals/release-notes-control.eval.yaml --strict
+   ```
+
+   ```text
+   ✔ evals/release-notes-control.eval.yaml is valid
+   ```
+
+   `vally lint` 能发现拼错的字段、两个检查项重名之类的错误。`--strict` 会把警告也当作错误。
+
+3. **先预测，再运行**：用这些检查项，四个答案中哪些会通过？然后运行评估：
+
+   ```bash
+   vally eval -e evals/release-notes-control.eval.yaml
+   ```
+
+   ```text
+   Loaded 4 stimuli from release-notes-check-controls · 4 workers
+
+   release-notes-check-controls
+
+     FAIL  empty-answer · 0/2 graders · 0.0s
+      ✘ empty-includes-search  'CT-101' NOT found in output
+      ✘ empty-includes-dark-mode  'CT-103' NOT found in output
+      · score 0.0% < threshold 100.0% · trial 1
+      score: 0.0% · threshold: 100.0%
+
+   ────────────────────────────────────────────────────────
+
+   Summary
+     release-notes-check-controls  ✘ 3/4 (score 75% < 100%)
+       ✘ empty-answer   2 graders failed
+         · empty-includes-search     'CT-101' NOT found in output · trial 1
+         · empty-includes-dark-mode  'CT-103' NOT found in output · trial 1
+       · score 0.0% < threshold 100.0% · trial 1
+
+   Saved  /workspaces/agent-evals-workshop-starter/vally-results/2026-11-19T09-54-58-895Z/
+   Run ID  2d473096-412c-4eae-af7c-3e4ed0d126b4
+   ```
+
+   Vally 只列出失败的任务，并给出每个任务中失败的检查项及其**证据**：`'CT-101' NOT found in output`。**4 个答案中有 3 个通过了，而其中一个正是错误答案**。这些检查项只关心 CT-101 和 CT-103 是否**出现**。错误答案两者都有，所以通过了，尽管它宣布了 CT-102。你的评估恰恰对你最关心的那个 bug 视而不见。
+
+4. 修复这个盲点：给每个任务添加一个**否定检查**。在文件中，把 `# TODO (Lab 2, step 4)` 所在的每一整行（包括行首的空格）替换为类似下面这样的检查项。检查项名称在整个文件中必须唯一，所以请沿用该任务其他检查项的前缀：`good-`、`alt-`、`wrong-` 和 `empty-`：
+
+   ```yaml
+         - type: output-contains
+           name: good-leaves-out-export
+           config: { substring: CT-102, negate: true }
+   ```
+
+   注意保持缩进：`-` 要与其他检查项的 `-` 对齐。
+
+5. 再执行一次 lint，然后再运行一次：
+
+   ```bash
+   vally lint -e evals/release-notes-control.eval.yaml --strict
+   vally eval -e evals/release-notes-control.eval.yaml
+   ```
+
+   ```text
+   Loaded 4 stimuli from release-notes-check-controls · 4 workers
+
+   release-notes-check-controls
+
+     FAIL  wrong-answer · 2/3 graders · 0.0s
+      ✘ wrong-leaves-out-export  'CT-102' found in output
+      · score 66.7% < threshold 100.0% · trial 1
+      score: 66.7% · threshold: 100.0%
+
+     FAIL  empty-answer · 1/3 graders · 0.0s
+      ✘ empty-includes-search  'CT-101' NOT found in output
+      ✘ empty-includes-dark-mode  'CT-103' NOT found in output
+      · score 33.3% < threshold 100.0% · trial 1
+      score: 33.3% · threshold: 100.0%
+
+   ────────────────────────────────────────────────────────
+
+   Summary
+     release-notes-check-controls  ✘ 2/4 (score 75% < 100%)
+       ✘ wrong-answer   wrong-leaves-out-export · 'CT-102' found in output
+       · score 66.7% < threshold 100.0% · trial 1
+       ✘ empty-answer   2 graders failed
+         · empty-includes-search     'CT-101' NOT found in output · trial 1
+         · empty-includes-dark-mode  'CT-103' NOT found in output · trial 1
+       · score 33.3% < threshold 100.0% · trial 1
+
+   Saved  /workspaces/agent-evals-workshop-starter/vally-results/2026-11-19T09-55-31-609Z/
+   Run ID  78ca45aa-f8cd-42c2-b500-7e609d5572a1
+   ```
+
+   Vally 又一次报告评估失败，而这一次，这正是你想要的结果：参见[刚才发生了什么](#刚才发生了什么)。
+
+6. 亲自评判结果。终端只显示了失败的部分。要查看判定结果背后的答案，请加上 `--verbose` 再运行一次评估：这样，对于每个失败的任务，Vally 还会在 `agent output` 下打印出它评判的答案。运行不花钱，想重跑多少次都可以：
+
+   ```bash
+   vally eval -e evals/release-notes-control.eval.yaml --verbose
+   ```
+
+   部分输出：
+
+   ```text
+     FAIL  wrong-answer · 2/3 graders · 0.0s
+      ✘ wrong-leaves-out-export  'CT-102' found in output
+      · score 66.7% < threshold 100.0% · trial 1
+
+      0 turns · 0 tools · 0 tok · mock
+      0 in · 0 out
+      score: 66.7% · threshold: 100.0%
+
+      agent output
+      - CT-101: Search across all projects
+      - CT-102: Export reports to CSV
+      - CT-103: Dark mode for the dashboard
+   ```
+
+   `0 turns · 0 tools · 0 tok · mock`：没有任何模型参与。要查看全部四个答案（包括通过的那些），请用与练习 0 中相同的 `jq` 命令查看试验记录：
+
+   ```bash
+   RUN=$(ls -d vally-results/*/ | tail -1)
+   jq 'select(.type == "trial-result") | {stimulus, answer: .trajectory.output, passed: .gradeResult.passed, score: .gradeResult.score}' "$RUN/results.jsonl"
+   ```
+
+   逐个任务检查：判定结果是否符合你的预期？每个失败检查项的证据是否指向了正确的原因？
+
+7. 查看本次运行的摘要表：在 Explorer（资源管理器）中，右键单击最新运行文件夹中的 `eval-results.md`，然后选择 **Open Preview**（打开预览）。**Tokens** 列中每个答案都是 `0`：模拟执行器从未调用模型。
+
+   | Stimulus | Graders | Pass Rate | Verdict |
+   |---|---|---|---|
+   | empty-answer | ❌ empty-includes-search 0/1<br/>❌ empty-includes-dark-mode 0/1<br/>✅ empty-leaves-out-export 1/1 | 0/1 | ❌ |
+   | wrong-answer | ✅ wrong-includes-search 1/1<br/>✅ wrong-includes-dark-mode 1/1<br/>❌ wrong-leaves-out-export 0/1 | 0/1 | ❌ |
+   | acceptable-alternative | ✅ alt-includes-search 1/1<br/>✅ alt-includes-dark-mode 1/1<br/>✅ alt-leaves-out-export 1/1 | 1/1 | ✅ |
+   | known-good-answer | ✅ good-includes-search 1/1<br/>✅ good-includes-dark-mode 1/1<br/>✅ good-leaves-out-export 1/1 | 1/1 | ✅ |
+
+   （已精简：实际的表格还包含时长、token 数、轮次和工具调用次数。）
+
+8. 像练习 0 中那样重启仪表板：在它的终端中按 Ctrl+C，然后按向上箭头键和 Enter 键。重新加载页面，选择你最新的运行：通过率 50%，4 个产出结果，0 个 token。在 **Grader breakdown** 下，`output-contains` 通过了 9 次、失败了 3 次：正是你预期的那 3 次失败，没有别的。
+
+</Steps>
+
+## 刚才发生了什么
+
+**Vally 说评估失败了，而这正是你想要的结果**。在对照评估中，已知错误的答案**本来就应该**失败。Vally 并不知道哪些答案是你有意写坏的；它只报告 4 个任务中有 2 个失败。（汇总中的 `score 75%` 是四个答案分数的平均值，这四个分数分别是 100%、100%、66.7% 和 33.3%；而每个答案自身的判定结果，取决于它是否达到了阈值。第 3 步的四个分数是 100%、100%、100% 和 0%，平均值同样是 75%，这纯属巧合。）你要检查的是**模式**：好答案 ✅、替代答案 ✅、错误答案 ❌、空答案 ❌。这个模式证明了三件事：
+
+- 你的检查项会接受好答案，即使换了顺序和措辞也一样：它们不依赖格式。
+- 你的检查项会拒绝你关心的那个 bug：一个宣布了 CT-102 的答案。
+- 你的检查项会拒绝什么都没宣布的答案。
+
+第 3 步已经让你看到了这为什么重要：只有肯定检查的评估，会把有 bug 的技能（skill）判为通过。那样你就会信任一个本身就有问题的测量。还要注意，尽管评估失败了，`vally eval` 仍然正常退出：失败的判定结果并不是错误。只有加上 `--require-pass` 时，失败的判定结果才会让命令以退出码 1 退出，这正是你在 CI 中要用的。
+
+:::note[在实际工作中运用]
+把对照评估和真实评估放在一起，并按用途拆分：
+
+- **已知正确的对照用例必须始终通过**。每次修改评估时都运行它们，并像 GitHub 的示例工作流那样，用 `--require-pass` 把它们设为门禁。
+- **已知错误的对照用例必须始终失败**。每次修改检查项时都重新运行它们，并查看结果的模式。它们本来就应该失败，所以不要把它们设为 CI 的门禁。
+- **把真实的失败变成新的对照用例**。当运行记录（transcript）中出现一种新的错误答案时，把它添加为已知错误的对照用例。
+- **保持副本同步**。对照评估保存的是你真实检查项的副本。在真实评估中修改某个检查项时，也要修改它的副本，并重新运行对照用例。模拟运行没有工具调用，所以对照用例能测试针对答案的检查项，却无法测试针对运行记录的检查项，例如 `skill-invocation`。
+:::
+
+## 自我检查
+
+<details>
+<summary>为什么错误答案在第 3 步中通过了？</summary>
+
+因为所有检查项都是肯定检查：“包含 CT-101”“包含 CT-103”。错误答案两者都包含。没有任何检查项去检查**不应该**出现的内容。Bug 往往表现为多出来的东西，所以大多数评估都需要否定检查。
+
+</details>
+
+<details>
+<summary>为什么这里用模拟执行器，而不用真实的智能体？</summary>
+
+要测试检查项，你需要判定结果已知的答案。真实智能体会自己写答案，每次运行都不一样，还要消耗 token。模拟执行器返回的是你的已知答案，免费且每次都相同，所以判定结果一旦出错，只可能是检查项错了。
+
+</details>
+
+<details>
+<summary>你的已知正确答案没通过某个检查项。错在哪里：答案还是检查项？</summary>
+
+如果你确定答案是好的，那就是检查项错了：要么太严格，要么检查的是格式而不是含义。这正是设置可接受替代答案的原因：像“第一个列表项是 CT-101”这样的检查项会让它失败，尽管这个答案完全没问题。
+
+</details>
+
+## 遇到问题了？
+
+- **进度落后了？**`scripts/catch-up.sh 2` 会把完成版的对照评估放到位。它会先备份你的版本。
+- **`duplicate-grader-name`**：每个检查项的名称在整个文件中都必须唯一。请使用该任务的前缀（`good-`、`alt-`、`wrong-`、`empty-`）。
+- **编辑后出现 YAML 错误**：检查缩进。每个新加的 `- type:` 行都必须与其他检查项从同一列开始。
+
+## 更进一步
+
+把练习 1 中的答案 B 添加为第五个对照用例，命名为 `note-mentions-unfinished-item`。你的检查项会给它什么判定结果？这和你在练习 1 中定下的判定结果一致吗？
+
+**下一步：**[练习 3：运行智能体](../lab-3-run-the-agent/)

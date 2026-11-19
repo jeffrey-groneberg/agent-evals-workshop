@@ -1,0 +1,149 @@
+---
+title: 模型访问与费用
+description: 工作坊中哪个模型负责什么、LLM 评审在哪里运行、如何按需使用你自己的模型终结点、固定了哪些模型及其原因，以及各个练习的费用。
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+import Flow from '../../../../components/Flow.astro';
+
+在这个工作坊中，两个不同的模型承担两项不同的工作。默认情况下，二者都使用同一套登录凭据在 GitHub Copilot 上运行，所以你不需要其他帐户或密钥。了解哪个模型负责什么，你就能知道每个练习的开销。
+
+<Flow
+  label="谁调用了哪个模型"
+  steps={[
+    { label: '你的评估（eval）', detail: 'evals/ 中的一个 YAML 文件', tone: 'input' },
+    { label: 'Vally', detail: '运行试验和评分器', tone: 'input' },
+    { label: '被测智能体', detail: 'GitHub Copilot，使用你的 Copilot 计划', tone: 'agent' },
+    { label: 'LLM 评审', detail: '第二个模型，使用你的 Copilot 计划或你自己的终结点', tone: 'grader' },
+  ]}
+/>
+
+| 职责 | 模型 | 运行位置 | 首次用到 |
+| --- | --- | --- | --- |
+| **被测智能体**：你要衡量其行为的智能体。它读取技能（skill）和待办事项列表，并撰写发布说明。 | `claude-sonnet-5.5`，属于 Anthropic 的 Claude 模型系列 | GitHub Copilot，使用你的 Copilot 计划 | 练习 0 |
+| **LLM 评审**：第二个模型，根据评分标准（rubric）为答案评分，用于评判代码检查项看不出来的质量。 | `gpt-5.6-luna`，属于 OpenAI 的 GPT 模型系列 | GitHub Copilot，使用你的 Copilot 计划；也可以选用你自己的终结点 | 练习 5 |
+
+## 为什么评审要用另一个模型？
+
+一个模型在给与自己同类的输出打分时，往往会过于宽容；研究人员把这称为**自我偏好偏差**。来自不同模型系列的评审更加独立。在练习中，由 GPT 模型来评判 Claude 模型。如果你把智能体换成了 GPT 模型，也要同时更换评审：从另一个模型系列中选一个模型（例如 Claude 模型），并用 `--param JUDGE_MODEL=<model-id>` 传入。你会在 [LLM 评审](../../concepts/llm-judges/) 中了解更多内容。
+
+## 评审在 GitHub Copilot 上运行
+
+从练习 5 开始，评估文件会在 `defaults` 下指定评审使用的模型：
+
+```yaml
+defaults:
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # the judge: a Copilot model, from another model family than the agent's
+```
+
+`${JUDGE_MODEL=gpt-5.6-luna}` 是一个**参数（param）**：一个带有默认值 `gpt-5.6-luna` 的占位符，你可以在命令行中替换它。评审与被测智能体使用同一套 Copilot 登录凭据，也就是你的 Codespace 的 `GITHUB_TOKEN`，或你的 `.env` 文件中的 `COPILOT_GITHUB_TOKEN`，因此不需要设置终结点、API 密钥，也不需要 `--param`：
+
+```bash
+vally eval -e evals/judge-controls.eval.yaml
+```
+
+每次评审调用都和智能体的请求一样，计入你的 Copilot 计划。具体如何计费取决于你的计划。
+
+如果想在某一次运行中使用其他评审模型，请传入它的 ID。启动 `copilot` 并输入 `/model`，即可查看你的计划中可用的模型；最好选择一个与智能体不属于同一模型系列的模型：
+
+```bash
+vally eval -e evals/judge-controls.eval.yaml --param JUDGE_MODEL=<model-id>
+```
+
+## 你自己的模型终结点（可选）
+
+完成练习并不需要这一部分。如果你愿意，评审也可以在你自己的模型部署上运行，例如 Azure OpenAI 或 Microsoft Foundry 上的部署：由你自带密钥（bring your own key）。这样，Vally 会把评审的请求发送到你的终结点，而不是 GitHub Copilot。被测智能体仍然在 Copilot 上运行。
+
+你需要：
+
+- 一个支持 Azure OpenAI v1 API（含 Responses API）的终结点，例如 Azure OpenAI 或 Microsoft Foundry 部署。
+- 一个 GPT-5 系列模型的部署。评审需要一个支持 Responses API 的推理模型。
+- 该终结点的 API 密钥。
+
+### 你的终结点和密钥
+
+你需要以环境变量的形式向 Vally 提供三个值：在 Codespace 中使用 Codespaces 机密（请参阅[添加或更改机密](../codespaces/#添加或更改机密)），在你的计算机上则写入 `.env` 文件中的对应行（请参阅[在你的计算机上搭建环境](../local/)）。
+
+| 变量 | 含义 | 示例 |
+| --- | --- | --- |
+| `LLM_BASE_URL` | 终结点的基 URL，以 `/openai/v1/` 结尾 | `https://<your-resource>.openai.azure.com/openai/v1/` |
+| `LLM_API_KEY` | 该终结点的 API 密钥，例如从 Azure 资源的 **Keys and Endpoint** 页面获取 | （保密） |
+| `LLM_MODEL` | 模型在该终结点上的部署名称 | 你的部署名称 |
+
+三个变量要么全部设置，要么都不设置：如果只设置了其中一部分，`./scripts/check-setup.sh` 会报告问题。要向你的终结点发送一个小请求来测试它们，请运行：
+
+```bash
+./scripts/check-setup.sh --ping
+```
+
+输出中关于终结点的部分如下所示，其中显示的是你的部署名称。密钥只显示其长度：
+
+```text
+Your own model endpoint (optional: without one, the judge runs on your Copilot plan)
+  ✔ LLM_BASE_URL is set (ends with /openai/v1/)
+  ✔ LLM_API_KEY is set (32 characters, not shown)
+  ✔ LLM_MODEL (deployment name): <name>
+
+Endpoint test: one small request
+  ✔ HTTP 200 from <name>: OK
+```
+
+[练习 8](../../labs/lab-8-compare-models/) 的 B 部分使用同样这三个变量，把你终结点上的模型设为被测智能体。
+
+### Vally 如何使用密钥
+
+要让评审指向你的终结点，需要在评估文件的 `defaults` 下添加一个 `judge_provider` 块。[练习 5](../../labs/lab-5-llm-judge/) 演示了每一个步骤：
+
+```yaml
+defaults:
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # with judge_provider: the deployment name on your endpoint
+  judge_timeout: 2m
+  judge_provider:                           # bring your own key: where the judge's requests go
+    type: azure                             # Azure OpenAI-style API with an api-key header
+    baseUrl: ${JUDGE_BASE_URL=https://set-your-endpoint.invalid/openai/v1/}   # replaced by --param
+    wireApi: responses                      # use the Responses API
+    apiKeyEnv: LLM_API_KEY                  # the NAME of the variable that holds the key, never the key
+```
+
+然后带上两个参数运行评估：
+
+```bash
+vally eval -e evals/judge-controls.eval.yaml \
+  --param JUDGE_BASE_URL="$LLM_BASE_URL" \
+  --param JUDGE_MODEL="$LLM_MODEL"
+```
+
+- **密钥永远不会出现在文件中**。`apiKeyEnv` 只保存一个环境变量的*名称*。Vally 在运行时从这个变量中读取密钥。
+- **`--param` 负责填充占位符**。Vally 参数无法读取环境变量，所以你要在命令行中传入这些值，由你的 shell 填入 `$LLM_BASE_URL` 和 `$LLM_MODEL`。使用 `judge_provider` 时，`judge_model` 是你的终结点上的部署名称。
+- **默认终结点是故意设成假的**。有了 `https://set-your-endpoint.invalid/openai/v1/`，`vally lint` 就能在任何地方检查这个文件，即使是在没有终结点的 CI 中。如果你忘了加 `--param JUDGE_BASE_URL`，或者 `LLM_BASE_URL` 为空，评审就会明确地报错，错误信息中会提到 `set-your-endpoint.invalid`。
+- **实际发送的内容**：一个发往 `<endpoint>/responses` 的 `POST` 请求，你的密钥放在 `api-key` 标头中，部署名称作为 `model`，并带有 `store: false`，要求终结点不要存储响应。你的模型提供方自身的日志记录和数据保留策略仍然适用。
+- **其他提供方**。Vally 支持三种提供方类型：`azure`、`openai` 和 `anthropic`。本工作坊用一个真实的终结点测试了 `azure` 搭配 `wireApi: responses` 的组合，评审给出的判定结果与 Copilot 评审完全相同。
+
+如果想重新使用 Copilot 进行评审，请删除 `judge_provider` 块，并在运行时去掉 `--param` 选项。
+
+## 固定模型：可比较，但非确定性
+
+练习固定了所用的模型：智能体的模型是 `claude-sonnet-5.5`（写在每个评估文件中），评审的模型是 `gpt-5.6-luna`，Vally 的版本是 0.21.0。固定下来，意味着每个人衡量的是同一个东西，因此你可以把自己的结果与邻座的结果，以及这些页面上展示的输出进行比较。
+
+**我必须使用这些模型吗**？不必。如果你的计划中没有 `claude-sonnet-5.5`，可以换一个：启动 `copilot`，输入 `/model` 查看你可用的模型，然后运行一次 `./scripts/use-model.sh <model-id>`。该脚本会修改 `evals/`、`lab-files/` 和 `solutions/` 中每个评估文件里智能体的 `model:` 行。这样，你在后续练习中复制的文件，以及 `scripts/catch-up.sh` 放置到位的文件，也都会使用新模型，包括练习 4 的实验和练习 7 的 CI。不带模型 ID 运行该脚本，可以查看每个文件使用的是哪个模型。如果只针对单次运行，也可以使用 `vally eval … --model <model-id>`，无需编辑任何文件。该脚本不会改动评审：如需使用其他评审模型，请在运行时添加 `--param JUDGE_MODEL=<model-id>`。对任何能力足够的模型来说，练习中的经验都同样适用；只有具体数字会有所不同。
+
+**我会得到完全相同的答案吗**？不会，这在意料之中。即使使用相同的模型和提示词，语言模型也不会两次给出同样的答案。正因如此，练习中的每次真实运行都会进行 3 次**试验**，并报告通过率，而不是单一的通过或失败。练习中有两样东西*确实*是完全确定的：代码检查项，以及练习 2 和练习 5 中的模拟执行器（mock），后者根本不使用任何智能体模型。请参阅[试验与指标](../../concepts/trials-and-metrics/)。
+
+## 练习的费用
+
+| 练习 | 智能体运行次数 | 评审调用次数 |
+| --- | --- | --- |
+| 练习 0 | 1 | 0 |
+| 练习 1 和 2 | 0 | 0 |
+| 练习 3 | 3 | 0 |
+| 练习 4 | 6；如果重新运行评估，再加 3 | 0 |
+| 练习 5 | 3 | 约 11 |
+| 练习 6 | 几条提示词和一次运行 | 0 |
+
+默认情况下，以上所有用量都计入你的 Copilot 计划。每次智能体运行都会向 GitHub Copilot 发送一条提示词，因此它会像你在 Copilot CLI 中发送的提示词一样计入你的计划；每次评审调用也会计入你的计划。如果你让评审使用自己的终结点，评审调用就会改为发送到你的终结点。Copilot 的用量如何计费取决于你的计划；如果不确定，请查看你的计划的用量页面。
+
+在我们的测试运行中，练习 0 那个只有一个单词的答案用了约 20,000 个 token，练习 3 的一次试验用了约 60,000 到 65,000 个 token。不带评审时，一次试验大约需要 10 到 30 秒。这些 token 大部分来自智能体的标准指令和工具描述，而不是你的提示词。
+
+## 下一步
+
+<LinkCard title="练习 0：设置与检查" description="运行一个很小的真实评估，确认一切正常。" href="../../labs/lab-0-setup/" />

@@ -1,0 +1,7 @@
+# Build output and Astro's cache.
+dist/
+.astro/
+node_modules/
+
+# Local design-tool cache.
+.impeccable/

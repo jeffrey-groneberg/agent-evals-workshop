@@ -1,0 +1,44 @@
+---
+// The facts line under a lab's title: how long it takes, what it costs, and what it uses.
+interface Props {
+	time: string;
+	cost: string;
+	uses?: string;
+}
+const { time, cost, uses } = Astro.props;
+const zh = Astro.locals.starlightRoute.lang === 'zh-CN';
+const t = zh ? { time: '时长', cost: '模型用量', uses: '使用' } : { time: 'Time', cost: 'Model use', uses: 'Uses' };
+---
+
+<ul class="lab-meta not-content">
+	<li><span>{t.time}</span> {time}</li>
+	<li><span>{t.cost}</span> {cost}</li>
+	{uses && <li><span>{t.uses}</span> {uses}</li>}
+</ul>
+
+<style>
+	.lab-meta li::before {
+		content: none !important;
+	}
+	.lab-meta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 0 0 1.25rem;
+		padding: 0;
+		list-style: none;
+	}
+	.lab-meta li {
+		margin: 0 !important;
+		padding: 0.2rem 0.6rem;
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: 999px;
+		background: var(--sl-color-bg-nav);
+		color: var(--sl-color-gray-1);
+		font-size: var(--sl-text-sm);
+	}
+	.lab-meta span {
+		margin-right: 0.3rem;
+		color: var(--sl-color-gray-3);
+	}
+</style>

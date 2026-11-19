@@ -1,0 +1,69 @@
+---
+title: GitHub Copilot Evals cheat sheet
+description: Installing and updating the GitHub Copilot Evals plugin in Copilot CLI, the six skills, example requests, and what to expect from runs and approvals.
+---
+
+GitHub Copilot Evals is in preview, and new plugin versions ship often. Full docs: [github.github.io/evals](https://github.github.io/evals/).
+
+## Install in Copilot CLI
+
+Run one at a time, and stop if a command fails:
+
+```bash
+copilot plugin marketplace add github/evals
+copilot plugin install eval@github-copilot-evals
+copilot plugin list --json          # "eval" from "github-copilot-evals", "enabled": true
+```
+
+From inside a Copilot conversation, use `/plugin marketplace add github/evals` and `/plugin install eval@github-copilot-evals` instead. Either way, start a fresh conversation afterwards.
+
+## Update
+
+```bash
+copilot plugin marketplace update github-copilot-evals
+copilot plugin update eval@github-copilot-evals
+```
+
+Turn the plugin off, for example so it can't join eval runs that use your Copilot home, and on again:
+
+```bash
+copilot plugin disable eval@github-copilot-evals
+copilot plugin enable eval@github-copilot-evals
+```
+
+## The six skills
+
+| Skill | Example request |
+| --- | --- |
+| **create** | "Create an eval for the release-notes skill in .github/skills/release-notes." |
+| **review** | "Review the eval in evals/release-notes.eval.yaml and its saved results." |
+| **improve** | "Add a failure case to this eval and save a revised copy." |
+| **run** | "Run this eval." |
+| **compare** | "Compare the last two saved runs of this eval." |
+| **setup** | "Set up the eval runner for this project with Node and Vally only, without a Copilot executable path." Also eval paths and test suites. |
+
+Ask in plain language. With Copilot CLI's experimental mode (`/experimental`, then a fresh conversation), the same skills are also commands: `/eval create`, `/eval review`, `/eval improve`, `/eval run`, `/eval compare`, `/eval setup`, and `/eval help`.
+
+## What to expect
+
+- **Approvals.** Every action needs two answers: Copilot CLI asks whether Copilot may use a tool, then the plugin shows a review of exactly what will happen and asks you to approve that action only. The review waits about three minutes. Copilot shows full files before saving; each run needs its own approval, and saving never starts a run.
+- **Runner setup.** At the start of a conversation, ask Copilot to set up the eval runner with Node and Vally only. With a Copilot executable path, a run with Vally 0.21.0 fails with `SDK protocol version mismatch` when your Copilot CLI is newer, for example 1.0.114.
+- **Sign-in.** Runs use the GitHub CLI's stored sign-in; Copilot CLI hides token variables from plugins. On your computer, `gh auth login` stores one. In a Codespace, store the Codespace's token: `echo "$GITHUB_TOKEN" | env -u GITHUB_TOKEN gh auth login --with-token`.
+- **Free and paid steps.** Validating, reading saved results and comparing saved runs make no model calls. Drafting, reviewing and running use your Copilot plan.
+- **Two runners.** The eval file decides. The **bounded runner** takes one trial per case, at most 10 cases with 10 checks each, 60 or 120 seconds per case, and no LLM judges, setup commands or command checks; it adds a tool policy and a short list of allowed programs, but it's not a sandbox. Several trials or a judge need Vally's **full engine**, which has no tool policy or sandbox and asks for its own approval. A custom model provider (your own endpoint) and remote MCP servers work with neither: use `vally eval`. See [How Copilot runs an eval](../../labs/lab-6-copilot-evals/#how-copilot-runs-an-eval).
+- **Results.** A run saves Vally's files in `vally-results/eval-run-<id>/<date-and-time>/`: `eval-results.md` and the trial folders, but no `results.jsonl`, so the dashboard and `answers.sh` don't show it. Copilot Evals keeps its own record in `.copilot/evals/results/`.
+- **Same files as Vally.** Everything Copilot writes is a normal `*.eval.yaml` file that you can lint and run with Vally.
+
+## Other apps
+
+| App | How |
+| --- | --- |
+| VS Code (desktop, 1.138.0 or later) | The GitHub Copilot Evals extension; **GitHub Copilot Evals: Open Evals Canvas** in the Command Palette |
+| Visual Studio 2022 (17.14+) or 2026 | The Visual Studio extension |
+| GitHub Copilot App | The plugin and Canvas |
+
+See [Supported apps](https://github.github.io/evals/hosts/).
+
+## CI
+
+`github/evals-action@v0` lints your project, runs a suite and posts one sticky pull request comment. See [Lab 7](../../labs/lab-7-ci/) and the [CI setup journey](https://github.github.io/evals/journeys/ci-setup/).

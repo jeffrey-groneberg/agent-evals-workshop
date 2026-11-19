@@ -1,0 +1,292 @@
+---
+title: 'Lab 2: Check your checks'
+description: Use Vally's mock executor to feed known good and bad answers to your checks, find a blind spot, and fix it, without calling any model.
+sidebar:
+  label: '2. Check your checks'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../components/LabMeta.astro';
+import EvalMap from '../../../components/EvalMap.astro';
+import Pieces from '../../../components/Pieces.astro';
+import Flow from '../../../components/Flow.astro';
+
+<LabMeta time="15 minutes" cost="None: the mock executor calls no model" uses="evals/release-notes-control.eval.yaml" />
+
+<figure class="illustration">
+  ![A calibration bench: a balance scale with test weights, and four answer cards on a conveyor passing an inspection arch with a magnifying glass; two leave with green checks, two with coral crosses. The teal robot sleeps in an armchair, because no agent runs in this lab.](../../../assets/labs/lab-2.jpg)
+  <figcaption>Test the measuring instrument first: known answers show whether your checks pass the good and fail the bad.</figcaption>
+</figure>
+
+Your criteria from Lab 1 become checks now. But before you let them grade a real agent, you prove that they work: you give them answers whose verdict you already know, and see whether they agree with you. You'll find that the starter checks have a blind spot, and you'll fix it.
+
+<EvalMap
+  doing="Feed four known answers to your checks, find their blind spot, and fix it with a negative check."
+  testing="Your checks: do they pass the good answers and fail the bad ones?"
+  checking="Code checks on the answer: contains CT-101, contains CT-103, and, new, doesn't contain CT-102"
+  task={{ text: 'Four known answers, written as prompts', state: 'new' }}
+  agent={{ text: 'Mock executor: no model; the prompt becomes the answer', state: 'changed' }}
+  trials={{ text: '1 per answer: a mock never varies' }}
+  checks={{ text: '<code>output-contains</code>, positive and negative', state: 'new' }}
+  results={{ text: 'Terminal, <code>--verbose</code>, trial records, dashboard' }}
+/>
+
+## The pieces you'll work with
+
+<Pieces
+  items={[
+    { term: 'Control', def: 'An answer whose verdict you already know: a known-good answer must pass, a known-bad answer must fail. Controls test your checks, not the agent.', analogy: 'a calibration weight for a scale', where: 'each stimulus in <code>evals/release-notes-control.eval.yaml</code>', isNew: true },
+    { term: 'Mock executor', def: 'An executor that calls no model. It returns each stimulus\'s prompt text as the "answer", so the checks grade exactly the text you wrote. Free, fast and the same every time.', analogy: 'a test double that replays a fixed answer', where: '<code>executor: mock</code> under <code>defaults</code>', isNew: true },
+    { term: 'Stimulus', def: 'One task. With the mock executor, its <code>prompt</code> is your known answer, word for word.', analogy: 'one test case', where: '<code>stimuli:</code>, each with a <code>name</code>', isNew: true },
+    { term: 'Grader <code>output-contains</code>', def: 'A code check that passes when the answer contains a text. Case-insensitive by default.', analogy: '<code>assertContains</code>', where: '<code>type: output-contains</code>, <code>config: { substring: … }</code>', isNew: true },
+    { term: 'Negative check', def: 'The same check, inverted: passes when the text is absent.', analogy: '<code>assertNotContains</code>', where: '<code>negate: true</code> in the config', isNew: true },
+    { term: 'Threshold', def: 'The score a trial needs to pass. Each trial\'s score is the average of its checks\' scores; with <code>threshold: 1</code>, every check must pass.', analogy: 'the pass mark', where: '<code>scoring.threshold</code>', isNew: true },
+  ]}
+/>
+
+## Why a mock executor?
+
+In this lab, you don't want an agent to write the answers: you want *your* answers, good and bad, so you know what the checks should say. The mock executor makes that possible. It skips the agent entirely and hands the prompt text straight to the graders:
+
+<Flow
+  label="A normal trial"
+  steps={[
+    { label: 'Normal trial', detail: 'executor: copilot-sdk (from Lab 3)', tone: 'muted' },
+    { label: 'Prompt', detail: '"Write the release notes …"', tone: 'input' },
+    { label: 'Agent works', detail: 'Copilot reads files, writes an answer', tone: 'agent' },
+    { label: 'Checks', detail: 'Grade the agent\'s answer', tone: 'grader' },
+  ]}
+/>
+
+<Flow
+  label="A control trial in this lab"
+  steps={[
+    { label: 'Control trial', detail: 'executor: mock (this lab)', tone: 'muted' },
+    { label: 'Prompt', detail: 'Your known answer, word for word', tone: 'input' },
+    { label: 'No model', detail: 'The prompt text becomes the answer', tone: 'muted' },
+    { label: 'Checks', detail: 'Grade your known answer', tone: 'grader' },
+  ]}
+/>
+
+That gives you four things a real agent can't:
+
+- **Certainty about the cause.** If a control gets the wrong verdict, the check is wrong, because nothing else was involved. Later, when a real trial fails, you'll know it's the agent, not the check.
+- **No cost.** No model, no tokens, no Copilot requests.
+- **Speed.** Without a model there's nothing to wait for: a control run takes a few seconds, so you can edit a check and rerun it twenty times.
+- **The same result every time.** Controls are deterministic, so a change in their result always means a change in your checks.
+
+What it **doesn't** do is tell you anything about the agent. It tests your measuring instrument. The agent comes in Lab 3.
+
+:::tip[Best practice, not a workshop trick]
+GitHub Copilot Evals publishes a [no-model control eval for release notes](https://github.github.io/evals/examples/release-note-control.eval.yaml) that works exactly like this one, plus a [workflow to run it in GitHub Actions](https://github.github.io/evals/examples/eval-controls.yml). Vally has [`vally oracle`](https://microsoft.github.io/vally/reference/cli/oracle/) for the same idea with file changes, and Anthropic recommends a [reference solution for every task](https://www.anthropic.com/research/demystifying-evals-for-ai-agents). See [Graders: check your checks](../../concepts/graders/#check-your-checks).
+:::
+
+## Steps
+
+<Steps>
+
+1. Open `evals/release-notes-control.eval.yaml` in the editor. It has four stimuli, each a known answer:
+
+   | Stimulus | The answer | It should |
+   | --- | --- | --- |
+   | `known-good-answer` | CT-101 and CT-103, with a summary sentence | pass |
+   | `acceptable-alternative` | The same items in another order, other wording | pass |
+   | `wrong-answer` | CT-101, CT-102 and CT-103: announces unfinished work | fail |
+   | `empty-answer` | "Nothing new to announce in this release." | fail |
+
+   Each stimulus has two checks so far: "contains CT-101" and "contains CT-103". Look at the top of the file too: `executor: mock`, `runs: 1` (a mock answer never changes, so one trial is enough) and `threshold: 1`.
+
+2. Check the file for mistakes, without running it:
+
+   ```bash
+   vally lint -e evals/release-notes-control.eval.yaml --strict
+   ```
+
+   ```text
+   ✔ evals/release-notes-control.eval.yaml is valid
+   ```
+
+   `vally lint` catches errors such as a misspelled field or two checks with the same name. `--strict` treats warnings as errors.
+
+3. **Predict before you run:** which of the four answers will pass with these checks? Then run the eval:
+
+   ```bash
+   vally eval -e evals/release-notes-control.eval.yaml
+   ```
+
+   ```text
+   Loaded 4 stimuli from release-notes-check-controls · 4 workers
+
+   release-notes-check-controls
+
+     FAIL  empty-answer · 0/2 graders · 0.0s
+      ✘ empty-includes-search  'CT-101' NOT found in output
+      ✘ empty-includes-dark-mode  'CT-103' NOT found in output
+      · score 0.0% < threshold 100.0% · trial 1
+      score: 0.0% · threshold: 100.0%
+
+   ────────────────────────────────────────────────────────
+
+   Summary
+     release-notes-check-controls  ✘ 3/4 (score 75% < 100%)
+       ✘ empty-answer   2 graders failed
+         · empty-includes-search     'CT-101' NOT found in output · trial 1
+         · empty-includes-dark-mode  'CT-103' NOT found in output · trial 1
+       · score 0.0% < threshold 100.0% · trial 1
+
+   Saved  /workspaces/agent-evals-workshop-starter/vally-results/2026-11-19T09-54-58-895Z/
+   Run ID  2d473096-412c-4eae-af7c-3e4ed0d126b4
+   ```
+
+   Vally lists only the stimuli that failed, each with the checks that failed and their **evidence**: `'CT-101' NOT found in output`. **3 of 4 passed, and one of them is the wrong answer.** The checks only ask whether CT-101 and CT-103 are *present*. The wrong answer has both, so it passes, even though it announces CT-102. Your eval is blind to the exact bug you care about.
+
+4. Fix the blind spot: add a **negative check** to every stimulus. In the file, replace each whole `# TODO (Lab 2, step 4)` line, including its leading spaces, with a check like this one. The names must be unique in the file, so use the prefix of the stimulus's other checks: `good-`, `alt-`, `wrong-` and `empty-`:
+
+   ```yaml
+         - type: output-contains
+           name: good-leaves-out-export
+           config: { substring: CT-102, negate: true }
+   ```
+
+   Keep the indentation: the `-` lines up with the other checks' `-`.
+
+5. Lint again, then run again:
+
+   ```bash
+   vally lint -e evals/release-notes-control.eval.yaml --strict
+   vally eval -e evals/release-notes-control.eval.yaml
+   ```
+
+   ```text
+   Loaded 4 stimuli from release-notes-check-controls · 4 workers
+
+   release-notes-check-controls
+
+     FAIL  wrong-answer · 2/3 graders · 0.0s
+      ✘ wrong-leaves-out-export  'CT-102' found in output
+      · score 66.7% < threshold 100.0% · trial 1
+      score: 66.7% · threshold: 100.0%
+
+     FAIL  empty-answer · 1/3 graders · 0.0s
+      ✘ empty-includes-search  'CT-101' NOT found in output
+      ✘ empty-includes-dark-mode  'CT-103' NOT found in output
+      · score 33.3% < threshold 100.0% · trial 1
+      score: 33.3% · threshold: 100.0%
+
+   ────────────────────────────────────────────────────────
+
+   Summary
+     release-notes-check-controls  ✘ 2/4 (score 75% < 100%)
+       ✘ wrong-answer   wrong-leaves-out-export · 'CT-102' found in output
+       · score 66.7% < threshold 100.0% · trial 1
+       ✘ empty-answer   2 graders failed
+         · empty-includes-search     'CT-101' NOT found in output · trial 1
+         · empty-includes-dark-mode  'CT-103' NOT found in output · trial 1
+       · score 33.3% < threshold 100.0% · trial 1
+
+   Saved  /workspaces/agent-evals-workshop-starter/vally-results/2026-11-19T09-55-31-609Z/
+   Run ID  78ca45aa-f8cd-42c2-b500-7e609d5572a1
+   ```
+
+   Vally reports a failed eval again, and this time that's the result you want: see [What just happened](#what-just-happened).
+
+6. Judge the result yourself. The terminal showed only what failed. To see the answers behind the verdicts, run the eval once more with `--verbose`: for each failing stimulus, Vally then also prints the answer it graded, under `agent output`. It's free, so rerun as often as you like:
+
+   ```bash
+   vally eval -e evals/release-notes-control.eval.yaml --verbose
+   ```
+
+   Part of the output:
+
+   ```text
+     FAIL  wrong-answer · 2/3 graders · 0.0s
+      ✘ wrong-leaves-out-export  'CT-102' found in output
+      · score 66.7% < threshold 100.0% · trial 1
+
+      0 turns · 0 tools · 0 tok · mock
+      0 in · 0 out
+      score: 66.7% · threshold: 100.0%
+
+      agent output
+      - CT-101: Search across all projects
+      - CT-102: Export reports to CSV
+      - CT-103: Dark mode for the dashboard
+   ```
+
+   `0 turns · 0 tools · 0 tok · mock`: no model was involved. For all four answers, passing ones included, look into the trial records, with the same `jq` command as in Lab 0:
+
+   ```bash
+   RUN=$(ls -d vally-results/*/ | tail -1)
+   jq 'select(.type == "trial-result") | {stimulus, answer: .trajectory.output, passed: .gradeResult.passed, score: .gradeResult.score}' "$RUN/results.jsonl"
+   ```
+
+   For every stimulus, check: is the verdict the one you expected, and does the evidence of each failing check point at the right reason?
+
+7. Look at the run's summary table: in the Explorer, right-click `eval-results.md` in the newest run folder and select **Open Preview**. The **Tokens** column says `0` for every answer: the mock executor never called a model.
+
+   | Stimulus | Graders | Pass Rate | Verdict |
+   |---|---|---|---|
+   | empty-answer | ❌ empty-includes-search 0/1<br/>❌ empty-includes-dark-mode 0/1<br/>✅ empty-leaves-out-export 1/1 | 0/1 | ❌ |
+   | wrong-answer | ✅ wrong-includes-search 1/1<br/>✅ wrong-includes-dark-mode 1/1<br/>❌ wrong-leaves-out-export 0/1 | 0/1 | ❌ |
+   | acceptable-alternative | ✅ alt-includes-search 1/1<br/>✅ alt-includes-dark-mode 1/1<br/>✅ alt-leaves-out-export 1/1 | 1/1 | ✅ |
+   | known-good-answer | ✅ good-includes-search 1/1<br/>✅ good-includes-dark-mode 1/1<br/>✅ good-leaves-out-export 1/1 | 1/1 | ✅ |
+
+   (Shortened: the real table also has the duration, tokens, turns and tool calls.)
+
+8. Restart the dashboard, as in Lab 0: in its terminal, press Ctrl+C, then the Up arrow and Enter. Reload the page and select your newest run: a 50% pass rate, 4 outcomes, 0 tokens. Under **Grader breakdown**, `output-contains` passed 9 times and failed 3 times: the three failures you expected, and nothing else.
+
+</Steps>
+
+## What just happened
+
+**Vally says the eval failed, and that's exactly the result you wanted.** In a control eval, the known-bad answers are *supposed* to fail. Vally doesn't know which answers you meant to be bad; it reports that 2 of 4 stimuli failed. (The `score 75%` in the summary is the average of the four answers' scores, 100 + 100 + 66.7 + 33.3 percent; each answer's own verdict depends on whether it reached the threshold. That step 3 also averaged 75%, with 100 + 100 + 100 + 0, is a coincidence.) What you check is the **pattern**: good ✅, alternative ✅, wrong ❌, empty ❌. That pattern proves three things:
+
+- Your checks accept a good answer, even in another order and wording: they don't depend on formatting.
+- Your checks reject the bug you care about: an answer that announces CT-102.
+- Your checks reject an answer that announces nothing.
+
+In step 3 you saw why this matters: an eval with only positive checks would have scored the buggy skill as passing. You'd have trusted a broken measurement. Notice also that `vally eval` exited normally even though the eval failed: a failing verdict isn't an error. Only with `--require-pass` does a failed verdict make the command exit with code 1, which is what you use in CI.
+
+:::note[Use this at work]
+Keep control evals next to your real evals, and split them by purpose:
+
+- **Known-good controls must always pass.** Run them whenever you change an eval, and gate on them with `--require-pass`, as GitHub's example workflow does.
+- **Known-bad controls must always fail.** Rerun them whenever you change a check, and look at the pattern. They're meant to fail, so don't gate CI on them.
+- **Turn real failures into new controls.** When a transcript shows a new kind of bad answer, add it as a known-bad control.
+- **Keep the copies in sync.** A control eval holds copies of your real checks. When you change a check in the real eval, change its copy too, and rerun the controls. A mock run has no tool calls, so controls can test checks on the answer, but not checks on the transcript such as `skill-invocation`.
+:::
+
+## Check yourself
+
+<details>
+<summary>Why did the wrong answer pass in step 3?</summary>
+
+Because every check was positive: "contains CT-101", "contains CT-103". The wrong answer contains both. Nothing checked for what must *not* be there. Bugs often appear as something extra, so most evals need negative checks.
+
+</details>
+
+<details>
+<summary>Why use the mock executor here instead of a real agent?</summary>
+
+To test the checks, you need answers whose verdict you know. A real agent writes its own answers, varying from run to run, and costs tokens. The mock executor returns your known answer, free and the same every time, so a wrong verdict can only mean a wrong check.
+
+</details>
+
+<details>
+<summary>Your known-good answer fails a check. What's wrong: the answer or the check?</summary>
+
+If you're sure the answer is good, the check is wrong: too strict, or checking formatting instead of meaning. That's the reason for the acceptable alternative: a check such as "the first bullet is CT-101" would fail it, although the answer is fine.
+
+</details>
+
+## Stuck?
+
+- **Behind?** `scripts/catch-up.sh 2` puts the finished control eval in place. It backs up your version first.
+- **`duplicate-grader-name`**: every check name must be unique in the whole file. Use the stimulus's prefix (`good-`, `alt-`, `wrong-`, `empty-`).
+- **A YAML error after your edit**: check the indentation. Each new `- type:` line must start in the same column as the other checks.
+
+## Go further
+
+Add answer B from Lab 1 as a fifth control, named `note-mentions-unfinished-item`. Which verdict do your checks give it? Is that the verdict you decided on in Lab 1?
+
+**Next:** [Lab 3: Run the agent](../lab-3-run-the-agent/)

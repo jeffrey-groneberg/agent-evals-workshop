@@ -1,0 +1,43 @@
+---
+// Starlight's footer, with the author credit and where the pictures come from, in the page's language.
+import Default from '@astrojs/starlight/components/Footer.astro';
+import { author } from '../site-config.mjs';
+
+const zh = Astro.locals.starlightRoute.lang === 'zh-CN';
+---
+
+<Default {...Astro.props} />
+<div class="credits">
+	<p>
+		{zh ? '本工作坊由 ' : 'Workshop created by '}
+		<a href={author.linkedin} rel="author noopener" target="_blank">{author.name}</a>
+		{zh ? ' 设计与编写 · ' : ' · '}
+		<a href={author.linkedin} rel="noopener" target="_blank">{zh ? '在 LinkedIn 上联系' : 'Connect on LinkedIn'}</a>
+	</p>
+	<p class="disclosure">
+		{
+			zh
+				? '插图由 AI 生成（MAI-Image-2.6）。命令输出来自 2026 年 11 月使用 Vally 0.21.0 的真实运行。'
+				: 'The illustrations are AI-generated (MAI-Image-2.6). Command output comes from real runs with Vally 0.21.0 in November 2026.'
+		}
+	</p>
+</div>
+
+<style>
+	.credits {
+		margin-top: 1.5rem;
+		text-align: center;
+		font-size: var(--sl-text-sm);
+		color: var(--sl-color-gray-2);
+	}
+	.credits p {
+		margin: 0.25rem 0;
+	}
+	.credits a {
+		color: var(--sl-color-text-accent);
+	}
+	.disclosure {
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-xs);
+	}
+</style>

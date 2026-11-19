@@ -1,0 +1,81 @@
+---
+title: Agent Evals Workshop
+description: A hands-on workshop for developers. Learn what an eval is, write and run evals for an AI agent with Vally, then let GitHub Copilot Evals help you create, review, run and compare them.
+template: splash
+editUrl: false
+hero:
+  tagline: From "what is an eval?" to GitHub Copilot Evals. Learn the basics, measure a real agent bug, prove the fix, and let Copilot help you with the next eval.
+  image:
+    file: ../../assets/hero.jpg
+    alt: A small teal robot, the AI agent under test, holds up release notes with one line marked red, in front of a laptop whose terminal shows two passing results and one failure, beside a checklist.
+  actions:
+    - text: Start the workshop
+      link: start/overview/
+      icon: right-arrow
+    - text: Open in a Codespace
+      link: start/codespaces/
+      icon: rocket
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import Flow from '../../components/Flow.astro';
+
+## What you'll learn
+
+<CardGrid>
+  <Card title="The basics, explained" icon="open-book">
+    What an eval is, why AI agents need them, and the parts every eval has: task, agent, environment, trials, transcript, graders and score.
+  </Card>
+  <Card title="Check your checks, for free" icon="approve-check">
+    Prove your checks catch a wrong answer before you spend a single token, with Vally's mock executor.
+  </Card>
+  <Card title="Measure a real bug" icon="magnifier">
+    Run GitHub Copilot as the agent under test, three trials at a time, and read the transcript to see why it fails.
+  </Card>
+  <Card title="Prove the fix" icon="random">
+    Fix the agent's skill and prove the fix with a controlled experiment: same eval, same model, one change.
+  </Card>
+  <Card title="Add an LLM judge" icon="star">
+    Write a rubric and calibrate an LLM judge for the qualities a string check can't see. It runs on Copilot; your own model endpoint is optional.
+  </Card>
+  <Card title="GitHub Copilot Evals" icon="github">
+    Let Copilot review, create, run and compare evals, and judge its drafts with what you learned.
+  </Card>
+</CardGrid>
+
+## How the workshop flows
+
+<Flow
+  label="The workshop path"
+  steps={[
+    { label: 'Basics', detail: 'What an eval is and the parts it has', tone: 'input' },
+    { label: 'Vally by hand', detail: 'Write, run and read evals in YAML and the terminal', tone: 'agent' },
+    { label: 'LLM judge', detail: 'A rubric, and a second model that applies it', tone: 'grader' },
+    { label: 'GitHub Copilot Evals', detail: 'Copilot helps you create, review, run and compare', tone: 'result' },
+  ]}
+/>
+
+You'll work on one small, real example the whole time: a **release-notes skill** that drafts release notes from a backlog. It has a bug: it announces work that isn't finished yet. You'll catch it, measure it, fix it and prove the fix. The guided part takes about two hours; the self-paced labs (CI, comparing models, your own agent) you finish at home.
+
+## Choose your start
+
+<CardGrid>
+  <LinkCard title="Workshop overview" description="The agenda, what you need, and how each lab works." href="start/overview/" />
+  <LinkCard title="Set up in a Codespace" description="Recommended: nothing to install, ready in a few minutes." href="start/codespaces/" />
+  <LinkCard title="Set up on your computer" description="Node.js 24, Git, jq and two npm packages." href="start/local/" />
+  <LinkCard title="Read the concepts first" description="Eight short pages, from 'What is an eval?' to the glossary." href="concepts/what-is-an-eval/" />
+  <LinkCard title="The starter repository" description="The files you work with in the labs, ready for a Codespace." href="https://github.com/jeffrey-groneberg/agent-evals-workshop-starter" />
+</CardGrid>
+
+## About the author
+
+<div class="author-card">
+  <div>
+    <p class="author-name">Jeffrey Groneberg</p>
+    <p>Senior Solution Engineer at Microsoft Germany. I created this workshop to help developers measure their AI agents instead of guessing. <a href="https://www.linkedin.com/in/jeffrey-groneberg-84b47412" rel="author noopener" target="_blank">Connect on LinkedIn</a>.</p>
+    <p>This is a community workshop, not official Microsoft or GitHub documentation. For the tools, the Vally and GitHub Copilot Evals docs are the reference.</p>
+  </div>
+</div>
+
+This workshop is also available in [简体中文](zh-cn/).

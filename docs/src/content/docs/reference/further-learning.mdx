@@ -1,0 +1,47 @@
+---
+title: Further learning and sources
+description: Hands-on labs and worked examples to continue with after the workshop, and the sources this workshop is based on.
+---
+
+## Continue with these labs
+
+All links were checked in November 2026. GitHub Copilot Evals is in preview, so its pages change often.
+
+### Start here
+
+| Lab | What you do | Link |
+| --- | --- | --- |
+| Run your first eval (GitHub Copilot Evals) | Pick one of your own skills, agents or MCP tools, describe success, draft and check the eval, approve one run, read the result | [github.github.io/evals/journeys/first-eval](https://github.github.io/evals/journeys/first-eval/) |
+| Run your first eval (Vally) | Install the Vally CLI, `vally init`, `vally eval`, read the grader evidence | [microsoft.github.io/vally/get-started/run-your-first-eval](https://microsoft.github.io/vally/get-started/run-your-first-eval/) |
+| Improve an existing eval (GitHub Copilot Evals) | Keep the original, change one thing at a time, compare saved runs | [github.github.io/evals/journeys/improve-an-eval](https://github.github.io/evals/journeys/improve-an-eval/) |
+| Set up GitHub Actions (GitHub Copilot Evals) | `.vally.yaml`, a workflow with `github/evals-action@v0`, evals tagged `lane: ci`, the pull request comment | [github.github.io/evals/journeys/ci-setup](https://github.github.io/evals/journeys/ci-setup/) |
+
+### Go deeper
+
+| Lab or example | What you do | Link |
+| --- | --- | --- |
+| Writing eval specs (Vally) | Stimuli, graders and rubric judges for your own agent | [microsoft.github.io/vally/guides/writing-eval-specs](https://microsoft.github.io/vally/guides/writing-eval-specs/) |
+| Run your first experiment (Vally) | Compare two variants, with `vally compare --fail-on-regression` | [microsoft.github.io/vally/guides/run-your-first-experiment](https://microsoft.github.io/vally/guides/run-your-first-experiment/) |
+| copilot-smoke example (`github/evals-action`) | The smallest end-to-end CI example: one skill, one eval, one workflow | [github.com/github/evals-action/tree/main/examples/copilot-smoke](https://github.com/github/evals-action/tree/main/examples/copilot-smoke) |
+| Harness evaluations (dotnet/efcore) | Read a real project's Vally evals for its Copilot instructions, skills, agents and prompts | [github.com/dotnet/efcore/tree/main/eng/harness-evaluation](https://github.com/dotnet/efcore/tree/main/eng/harness-evaluation) |
+| Testing with Vally (microsoft/mcp) | Generate tool-call checks for MCP tools and run them with Vally | [github.com/microsoft/mcp/blob/main/docs/testing-with-vally.md](https://github.com/microsoft/mcp/blob/main/docs/testing-with-vally.md) |
+| Evaluate Hosted Skills with Vally (Microsoft Learn) | An `eval.yaml` for a hosted skill, run with a pass gate | [learn.microsoft.com/…/functions-hosted-skills-evaluation](https://learn.microsoft.com/azure/azure-functions/functions-hosted-skills-evaluation) |
+
+### If your agents run on Microsoft Foundry
+
+| Lab | What you do | Link |
+| --- | --- | --- |
+| Automate AI evaluations with Microsoft Foundry and GitHub Actions | Cloud evaluators on a dataset, and a pull request gate | [Microsoft Learn training](https://learn.microsoft.com/training/modules/automated-evaluation-genaiops/) |
+| Quickstart: Evaluate your hosted agent | A dataset, evaluators, a run, and a baseline compared with an update | [Microsoft Learn](https://learn.microsoft.com/azure/foundry/observability/quickstarts/quickstart-evaluate-hosted-agent) |
+
+## Sources
+
+The concepts in this workshop draw on these sources:
+
+- **Vally documentation**: [microsoft.github.io/vally](https://microsoft.github.io/vally/), in particular the [eval file reference](https://microsoft.github.io/vally/reference/eval-spec/), [experiment files](https://microsoft.github.io/vally/reference/experiment-file/), [graders](https://microsoft.github.io/vally/reference/graders/) and [runtime setup](https://microsoft.github.io/vally/get-started/runtime-setup/).
+- **GitHub Copilot Evals documentation**: [github.github.io/evals](https://github.github.io/evals/), including the [release-note control example](https://github.github.io/evals/examples/release-note-control.eval.yaml).
+- **`github/evals-action`**: [README](https://github.com/github/evals-action).
+- **GitHub Docs**: [Authenticating GitHub Copilot CLI](https://docs.github.com/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli).
+- **Anthropic**: [Demystifying evals for AI agents](https://www.anthropic.com/research/demystifying-evals-for-ai-agents): tasks, trials, graders, transcripts, capability and regression evals, pass@k and pass^k.
+- **Chen et al., 2021**: [Evaluating Large Language Models Trained on Code](https://arxiv.org/abs/2107.03374): the unbiased pass@k estimator.
+- **Zheng et al., 2023**: [Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena](https://arxiv.org/abs/2306.05685): LLM judges' agreement with humans, and their biases.

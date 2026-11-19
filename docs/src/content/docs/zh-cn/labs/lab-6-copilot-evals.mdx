@@ -1,0 +1,289 @@
+---
+title: 练习 6：GitHub Copilot Evals
+description: 在 Copilot CLI 中安装 GitHub Copilot Evals 插件，然后让 Copilot 审查你的评估、起草一个新评估并运行它，再用你学到的知识评判它的草稿。
+sidebar:
+  label: '6. GitHub Copilot Evals'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../../components/LabMeta.astro';
+import EvalMap from '../../../../components/EvalMap.astro';
+import Pieces from '../../../../components/Pieces.astro';
+import Flow from '../../../../components/Flow.astro';
+
+<LabMeta time="15 分钟，课后可继续深入" cost="若干条 Copilot 提示词和两次简短运行" uses="装有 Evals 插件的 Copilot CLI" />
+
+<figure class="illustration">
+  ![一个编辑器窗口，带有一个以闪光图标标记的聊天助手面板：对话中的内容块组装成一份带检查清单的评估文档。青色机器人和桃色机器人在前方的舞台上准备就绪，一个小终端显示着绿色的对勾。](../../../../assets/labs/lab-6.jpg)
+  <figcaption>GitHub Copilot 用自然语言与你一起起草、审查和运行评估。</figcaption>
+</figure>
+
+你已经亲手编写、检查、运行、修复并评判过评估（eval）。现在，轮到 Copilot 来帮忙了。GitHub Copilot Evals 目前处于预览阶段，它为 Copilot 添加了一组技能（skill），让你可以用自然语言审查、创建、改进、运行和比较评估。它写出的文件就是你熟悉的 Vally YAML，所以它起草的每一份草稿，你都能做出评判。
+
+<EvalMap
+  doing="用自然语言请 GitHub Copilot 审查你的评估，根据你的标准起草一个新评估，然后运行它。"
+  testing="release-notes 技能，借助由 Copilot 起草、由你审查的评估来测试"
+  checking="由 Copilot 提出、由你接受、修改或拒绝的检查项"
+  task={{ text: '由 Copilot 根据你的标准起草', state: 'changed' }}
+  agent={{ text: 'GitHub Copilot，与之前相同' }}
+  environment={{ text: '技能和 <code>backlog.json</code>' }}
+  trials={{ text: '按草稿设定为 3 次；在受限运行器上为 1 次', state: 'changed' }}
+  checks={{ text: '由 Copilot 起草，由你审查', state: 'changed' }}
+  results={{ text: 'Copilot 的摘要、Vally 生成的文件和插件的记录', state: 'changed' }}
+/>
+
+## 你将用到的要素
+
+<Pieces
+  items={[
+    { term: '插件', def: '为 Copilot CLI 添加技能和工具的软件包。Evals 插件名为 <code>eval</code>，来自 <code>github-copilot-evals</code> 插件市场。', analogy: '编辑器的扩展', where: '<code>copilot plugin install eval@github-copilot-evals</code>', isNew: true },
+    { term: '插件市场', def: 'Copilot CLI 可以从中安装插件的插件目录。GitHub 的 Evals 插件市场只需添加一次。', analogy: '软件包注册表', where: '<code>copilot plugin marketplace add github/evals</code>', isNew: true },
+    { term: 'Evals 技能', def: '当你的请求与之匹配时，Copilot 会调用的六个技能：<strong>create</strong>、<strong>review</strong>、<strong>improve</strong>、<strong>run</strong>、<strong>compare</strong> 和 <strong>setup</strong>。你只需用自然语言提出请求。', analogy: 'Copilot 可以随时请来的专家', where: 'Copilot 使用某个技能时显示的 <code>skill(review)</code>', isNew: true },
+    { term: '批准', def: '在 Copilot 保存文件或运行评估之前，你要批准两次：Copilot CLI 先询问 Copilot 能否使用某个工具，然后 Evals 插件会展示一份审核内容，准确说明将要发生什么。保存不等于运行；每次运行都需要单独批准。', analogy: '付款前的确认对话框', where: '<code>Do you want to use this tool?</code>，然后是 <code>copilot-evals needs information</code>', isNew: true },
+    { term: '评估运行器设置', def: 'Copilot Evals 用哪个 Node.js 和哪个 Vally 来运行评估。每个对话设置一次，并且不指定 Copilot 路径，这样 Vally 就会使用它自带的 Copilot 运行时。', analogy: '为构建选择工具链', where: '<strong>Configure Eval Runner</strong> 工具', isNew: true },
+    { term: '受限运行器（bounded runner）', def: 'Copilot Evals 用于小型评估的运行器：每个任务 1 次试验，最多 10 个任务、每个任务最多 10 个检查项，并且不使用 LLM 评审、设置命令或命令检查。它会增加一套工具策略和一份很短的允许程序列表，但它并不是沙盒。', analogy: '快速结账通道：只收小件', where: '运行审核内容中的 <code>Compatibility: vally-bounded</code>', isNew: true },
+    { term: '完整引擎运行器（full-engine runner）', def: '支持 Vally 的更多功能：多次试验、LLM 评审、设置命令、长达一天的时间限制。它没有工具策略，也没有沙盒，因此需要单独批准，并附带一份详细的审核内容。', analogy: '普通结账通道，附逐项明细账单', where: '运行审核内容中的 <code>TRUSTED FULL EVAL RUN</code> 和 <code>vally-full-engine-v1</code>', isNew: true },
+  ]}
+/>
+
+## 为什么这很重要
+
+Copilot 一分钟就能起草一个评估。但这个评估衡量的是不是正确的东西，仍然要由你来判断。现在你已经知道该看什么：清晰的任务、正确的环境、否定检查、针对运行记录（transcript）和工作区的检查项，以及足够多的试验。本练习以你今后的工作方式为工作坊收尾：Copilot 负责打字，你负责评判。
+
+## Copilot 如何运行评估
+
+<Flow
+  label="当你请 Copilot 运行评估时会发生什么"
+  steps={[
+    { label: '你提出请求', detail: '用自然语言', tone: 'input' },
+    { label: 'Copilot 制定计划', detail: 'run 技能', tone: 'agent' },
+    { label: '选定运行器', detail: '由评估文件决定', tone: 'grader' },
+    { label: '你来批准', detail: '确切的计划', tone: 'input' },
+    { label: 'Vally 执行', detail: '随后 Copilot 解释结果', tone: 'result' },
+  ]}
+/>
+
+Copilot 并不自己运行评估：它把评估交给 Vally，通过两种运行器之一来运行。
+
+- **受限运行器**用于 Copilot 可以替你启动、又不会带来意外的小型评估：每个任务 1 次试验，最多 10 个任务、每个任务最多 10 个检查项，每个任务最多两分钟，并且不使用 LLM 评审、设置命令或命令检查（[完整列表](https://github.github.io/evals/reference/checks-and-profiles/)）。与每次 Vally 运行一样，每次试验都在一个全新的工作区中、基于评估文件的副本进行；受限运行器还会增加全新的主目录、一套工具策略和一份很短的允许程序列表。不过，它并不是沙盒：智能体的工具仍然可以访问工作区之外的文件（包括你的原始文件）和网络，费用也没有上限。
+- **完整引擎**支持 Vally 的更多功能：多次试验（每次运行最多 100 次）、LLM 评审、设置命令，以及长达一天的时间限制。它没有工具策略，也没有沙盒，因此需要单独批准，审核内容会列出试验次数、模型、凭据，以及所有不受限制的内容。
+
+运行器不由你的请求决定，而是由评估文件决定。只有 1 次试验和简单检查项的评估在受限运行器上运行；多次试验或带评审的评估则需要完整引擎。在本练习中，这两种你都会见到。有几项 Vally 功能两种运行器都不支持，例如自定义模型提供方（你自己的模型终结点）和远程 MCP 服务器：请用 `vally eval` 运行这类评估。
+
+## 步骤
+
+<Steps>
+
+1. 在终端中添加 GitHub 的 Evals 插件市场并安装插件，一次运行一条命令：
+
+   ```bash
+   copilot plugin marketplace add github/evals
+   copilot plugin install eval@github-copilot-evals
+   ```
+
+   ```text
+   Marketplace "github-copilot-evals" added successfully.
+   Plugin "eval" installed successfully. Installed 6 skills.
+   ```
+
+   确认插件已启用：
+
+   ```bash
+   copilot plugin list --json
+   ```
+
+   在输出中找到 `"name": "eval"`、`"marketplace": "github-copilot-evals"` 和 `"enabled": true`。预览期间，版本号会经常变化。
+
+   :::caution[你在使用 `EVALUATE_USE_HOST_COPILOT_HOME=1` 吗？]
+   插件现在位于你的 Copilot 主目录中。如果 Vally 复用这个目录，那么从现在起，插件的技能会参与每一次评估运行。完成本练习后，请按照[改用 Copilot CLI 登录](../../start/local/#改用-copilot-cli-登录)中的说明，切换回 GitHub CLI 登录。也可以用 `copilot plugin disable eval@github-copilot-evals` 关闭插件。请参阅[练习 3：为什么干净的环境很重要](../lab-3-run-the-agent/#为什么干净的环境很重要)。
+   :::
+
+2. **仅限 Codespace**：为 Copilot Evals 提供一个 GitHub CLI 登录。Copilot Evals 使用 GitHub CLI *已存储*的登录凭据来启动运行，而 Copilot CLI 会对插件隐藏 `GITHUB_TOKEN` 之类的令牌变量。在 Codespace 中，GitHub CLI 并没有存储任何凭据：它是通过这个变量登录的。因此，请把 Codespace 的令牌存储为 GitHub CLI 的登录凭据：
+
+   ```bash
+   echo "$GITHUB_TOKEN" | env -u GITHUB_TOKEN gh auth login --with-token
+   ```
+
+   `env -u GITHUB_TOKEN` 只对这一条命令隐藏该变量，因为只要设置了这个变量，GitHub CLI 就不会存储登录凭据。按照 Copilot Evals 看到的方式检查结果：
+
+   ```bash
+   env -u GITHUB_TOKEN gh auth status
+   ```
+
+   ```text
+   github.com
+     ✓ Logged in to github.com account <you> (/home/node/.config/gh/hosts.yml)
+   ```
+
+   GitHub CLI 会把令牌保存在这个文件中，它位于你的 Codespace 的主目录里。Codespace 每次启动都会获得一个新令牌，所以重启后请再运行一次第一条命令。在你的计算机上，请跳过这一步：你在搭建环境时已经用 `gh auth login` 存储了登录凭据。如果你在练习 0 中使用的是个人访问令牌，请参阅下文的**遇到问题？**。
+
+3. 在存储库的根文件夹中开始一个新的 Copilot 对话：
+
+   ```bash
+   copilot
+   ```
+
+   如果 Copilot 询问你是否信任此文件夹中的文件，请确认。Copilot CLI 会使用与 Vally 相同的令牌登录，也就是你的 Codespace 的 `GITHUB_TOKEN` 或 `.env` 中的 `COPILOT_GITHUB_TOKEN`，所以你不需要运行 `copilot login`。Copilot 可能会告诉你它使用的是哪个模型；这一点也可以由你的组织替你管理。
+
+   然后告诉 Copilot Evals 用哪些程序来运行评估：
+
+   ```text
+   Set up the eval runner for this project with Node and Vally only, without a Copilot executable path.
+   ```
+
+   Copilot 会使用 **setup** 技能，并询问两次。首先，Copilot CLI 询问它能否使用 **Configure Eval Runner** 工具。然后，插件会显示它自己的审核内容，其结尾是 `Execute selected version and compatibility checks only. No installation or model run.` 两次都批准。Copilot 会确认，它已用 Node 和 Vally 0.21.0 配置好运行器，没有指定 Copilot 可执行文件路径。
+
+   **为什么不指定 Copilot 路径**？Vally 0.21.0 自带一个 Copilot 运行时，也就是 `vally eval` 使用的那个。你安装的 Copilot CLI 可能更新：例如 Copilot CLI 1.0.114 使用的协议比 Vally 0.21.0 更新，用它进行的运行会以 `SDK protocol version mismatch` 失败。如果之后的某个对话再次要求配置评估运行器，请再次使用这条提示词。
+
+   :::tip[每个操作都有两次提示]
+   Copilot CLI 会询问 Copilot 能否使用某个工具；随后 Evals 插件会显示一份审核内容，准确说明将要发生什么，并请你只批准这一个操作。审核内容会等待你的回答约三分钟。如果超时，请让 Copilot 重试。
+   :::
+
+4. **审查**。让 Copilot 审查你编写的评估：
+
+   ```text
+   Review the eval in evals/release-notes.eval.yaml. What does it check, what does it miss, and how would you improve it? Don't change any files yet.
+   ```
+
+   Copilot 会使用 **review** 技能。它可能会请求批准，以便对该文件运行一个 Evals 审查工具：先读一读它要做什么，再允许它运行。把 Copilot 的发现与你已经掌握的知识做个对比：它注意到否定检查了吗？注意到针对 `backlog.json` 的那项检查有局限了吗？试验次数呢？有没有你会采纳的建议？
+
+5. **创建**。让 Copilot 从零开始起草一个新评估，并把你在练习 1 中定下的标准告诉它：
+
+   ```text
+   Create an eval for the release-notes skill in .github/skills/release-notes. Good release notes announce only backlog items whose status is done, never mention unfinished items anywhere, start with one short summary sentence, and leave backlog.json unchanged.
+   ```
+
+   Copilot 会使用 **create** 技能。它会提出要测试的内容，并可能先问你几个问题，请逐一回答。在我们的测试中，它注意到技能要求列出每一个条目，这与你的标准相矛盾，于是询问是否仍要把这个评估保存为回归测试。答案是肯定的：评估描述的是*应该*发生的情况，所以在技能修复之前，它都会失败。在保存任何内容之前，它会向你展示完整的文件，也就是 **Validate and Save Eval Draft** 工具的批准请求中的 `content`。**先审查草稿，再批准**，可以对照这份清单：
+
+   | 要留意的内容 | 原因 |
+   | --- | --- |
+   | 提示词听起来像真实的请求，既不点明技能，也不透露预期答案 | 否则评估测试的是提示词，而不是技能 |
+   | 环境中包含该技能和 `backlog.json` | 没有它们，智能体就无法完成任务 |
+   | 一个针对 CT-102 的**否定**检查 | 你关心的 bug 是答案里多出来的内容（练习 2） |
+   | 一个检查技能是否被使用的检查项，以及一个针对 `backlog.json` 的检查项 | 运行记录和工作区同样重要（练习 3） |
+   | 检查项名称能准确说明它测试的内容 | 这样一旦失败，你就能看出哪里出了问题 |
+   | 多次试验，以及合理的阈值 | 一次运行只是孤例 |
+   | 为智能体固定的 `model`；如果草稿中有 LLM 评审（`type: prompt`），还要有 `judge_model` | 缺少它们时，Vally 会回退到默认值。在我们的测试中，Copilot 的草稿里有评审，却既没有 `model` 也没有 `judge_model`，而且只有 1 次试验。Vally 的默认评审模型不在我们的 Copilot 计划中，因此每个评审评分都无效 |
+
+   如需修改，请选择 **No, and tell Copilot what to do differently**，输入要修改的内容，然后按 Enter。例如：`Before saving: under defaults, pin the agent model with model: claude-sonnet-5.5, add judge_model: gpt-5.6-luna for the prompt check, and use runs: 3 so we get several trials.` Copilot 会展示修改后的文件；等它符合清单要求后再批准。
+
+6. **运行**。让 Copilot 运行这个新评估：
+
+   ```text
+   Run the eval you just created.
+   ```
+
+   Copilot 会使用 **run** 技能，总结计划，然后像之前一样询问两次。插件的审核内容很长。批准之前，请读一读这几部分：
+
+   - **运行器**：其中写着 `TRUSTED FULL EVAL RUN` 和 `Compatibility: vally-full-engine-v1`。你的草稿有 3 次试验和一个 LLM 评审，只有完整引擎才能运行这些。
+   - **费用**：`1 cases x 3 trials = 3 trials`、智能体的模型和评审的模型，以及 `Internal requests, retries and total cost are not capped`。
+   - **哪些不受限制**：`A trusted full eval run has no tool-use restrictions and no OS, filesystem or network sandbox`，而且它使用的 GitHub 凭据对这次运行启动的每个进程都可见。
+   - **结果保存在哪里**：`vally-results/<run>/<timestamp>`。
+
+   如果这些都符合你的预期，就批准。如果审核随后询问 **Approval scope**，请选择 **Allow once**。运行需要一两分钟，然后 Copilot 会总结结果。我们的结果是：`The run completed: 0/3 trials passed.` 每次试验都提到了 CT-102，其中两次以标题或开场白开头，而不是一句摘要。这正是练习 3 中的那个 bug：评估发现了它，而起始存储库中的技能仍然有这个 bug。
+
+7. **阅读这次运行**。让 Copilot 解释结果；它会读取这次运行的记录，其中包含每次试验的答案和每个检查项的证据。然后自己检查一遍。这次运行把 Vally 的文件保存在一个新文件夹 `vally-results/eval-run-<id>/<date-and-time>/` 中：
+
+   - `eval-results.md`：你在练习 0 中见过的摘要表。右键单击它，然后选择 **Open Preview**。
+   - 每次试验一个文件夹，位于 `release-notes-regression/completed-work-only/claude-sonnet-5.5/` 下，其中有 `events.jsonl`、`workspace.patch` 和 `metadata.json`，与练习 3 中相同。文件夹名称依次对应你的评估名称、它的任务（stimulus）和模型。
+
+   这里没有 `results.jsonl`：Copilot Evals 把这次运行的记录保存在 `.copilot/evals/results/` 中。因此，读取 `results.jsonl` 的仪表板和 `./scripts/answers.sh` 不会显示这次运行。如果想得到一次它们能读取的运行，请用 Vally 另外运行一次：打开第二个终端（**Terminal** > **New Terminal**；在你的计算机上，先在其中加载 `.env`），在那里运行该文件。这是一次新的运行，会产生新的答案，并且和其他运行一样消耗 Copilot 请求：
+
+   ```bash
+   vally eval -e evals/<the-file-copilot-saved>.eval.yaml
+   ```
+
+8. 可选：**看看受限运行器**。让 Copilot 运行练习 0 的评估：
+
+   ```text
+   Run the eval in lab-files/lab-0/setup-check.eval.yaml.
+   ```
+
+   只有 1 次试验，没有评审：这一次，审核内容显示 `Compatibility: vally-bounded` 和 `Copilot executable: default SDK runtime`，并列出受限运行器拒绝的内容：`Setup/git-clone commands, model-based or command checks, dynamic parameter substitution, and multiple trials are rejected before approval.` 它还说明了受限运行器不是什么：`Separate files and fresh home directories are not an OS sandbox or network restriction.` 批准后，这次运行几秒钟内就会通过：`1 passed, 0 failed. The response was READY`。
+
+9. 可选：**改进**（improve）或**比较**（compare）：
+
+   ```text
+   Add a failure case to this eval: an answer that mentions CT-102 in a note. Save a revised copy.
+   ```
+
+   ```text
+   Compare the last two saved runs of this eval.
+   ```
+
+10. 用 `/exit` 退出对话。
+
+</Steps>
+
+## 刚才发生了什么
+
+- Copilot **审查**了一个评估，**起草**了一个评估，又**运行**了一个评估；每一次，它都根据你的自然语言请求选出了匹配的 Evals 技能。
+- 它在 Vally 的**完整引擎**上运行了你的草稿，因为这份草稿需要 3 次试验和一个评审。只有 1 次试验、没有评审、设置命令或命令检查的小型评估，则在**受限运行器**上运行。
+- 它写出的每个文件都是普通的 **Vally YAML**：你可以对它进行 lint 检查，用 `vally eval` 运行它，把它放进实验或 CI 中。
+- 你始终掌握着控制权：Copilot 在保存前展示完整的文件；每次运行之前，插件的审核内容都会告诉你这次运行的费用，以及哪些内容不受限制。
+- 而且你能**评判它的草稿**，因为你知道一个评估需要什么。这正是本工作坊从手动使用 Vally 开始的原因。
+
+## 用命令代替自然语言
+
+Copilot CLI 还提供 `/eval` 命令，例如 `/eval review`、`/eval create` 和 `/eval run`。这些命令需要开启 Copilot CLI 的实验模式才能使用：在 Copilot CLI 中输入 `/experimental`，开始一个新对话，然后输入 `/eval help`。自然语言请求无需实验模式即可使用。
+
+## 在你的电脑上：VS Code
+
+在你自己的电脑上，也可以改用 VS Code 的 GitHub Copilot Evals 扩展。它提供一个可视化的 **Evals Canvas**：打开你的项目，然后从命令面板运行 **GitHub Copilot Evals: Open Evals Canvas**。它需要桌面版 VS Code 1.138.0 或更高版本，以及一个受信任的本地项目。请参阅 GitHub Copilot Evals 文档中的[入门](https://github.github.io/evals/getting-started/)。
+
+## 自我检查
+
+<details>
+<summary>Copilot 的草稿只有肯定检查。你该怎么办？</summary>
+
+让它添加一个否定检查：“添加一个检查项，在答案提到 CT-102 时判为失败。”然后，在信任任何一次运行的结果之前，先像练习 2 那样用已知答案测试这些检查项。
+
+</details>
+
+<details>
+<summary>为什么每次运行都需要你批准？</summary>
+
+一次运行会启动一个可以使用工具的智能体，并消耗 Copilot 用量。保存文件永远不会启动运行，批准一次运行也不等于批准下一次。这样一来，凡是你没看过、没同意的，都不会运行。
+
+</details>
+
+<details>
+<summary>Copilot 运行评估时，实际执行评估的是什么？</summary>
+
+是 Vally。GitHub Copilot Evals 负责准备、解释和审批这次运行，并在两种运行器中选择一种：受限运行器或 Vally 的完整引擎。无论哪种，执行试验和评分器的都是 Vally，也就是你在练习 0 到 5 中用过的同一个引擎，它会把文件保存在 `vally-results/` 中。
+
+</details>
+
+<details>
+<summary>为什么你的草稿在完整引擎上运行，而练习 0 的评估在受限运行器上运行？</summary>
+
+由评估文件决定。受限运行器每个任务只运行 1 次试验，并且不接受 LLM 评审、设置命令或命令检查。你的草稿有 3 次试验和一个 LLM 评审，因此需要完整引擎，并且要经过它自己那份更详细的批准。
+
+</details>
+
+<details>
+<summary>受限运行器是沙盒吗？</summary>
+
+不是。与每次 Vally 运行一样，每次试验都在一个全新的工作区中、基于评估文件的副本进行；受限运行器还会增加全新的主目录、一套工具策略和一份很短的允许程序列表。但智能体的工具仍然可以访问工作区之外的文件（包括你的原始文件）和网络，费用也没有上限。审核内容本身也是这么说的。受限运行器真正提供的，是一次规模小、可预期、在你批准之前很容易核对的运行。
+
+</details>
+
+## 遇到问题？
+
+- **无法识别 `copilot plugin`**：用 `npm install -g @github/copilot` 更新 Copilot CLI，然后重试。
+- **Copilot 没有使用 Evals 技能**：开始一个新对话（先 `/exit`，再 `copilot`），并检查 `copilot plugin list --json`。
+- **运行失败并显示 `GitHub CLI sign-in is unavailable for github.com`**：在 Codespace 中，按照第 2 步存储登录凭据；在你的计算机上，运行 `gh auth login`。然后让 Copilot 再运行一次。
+- **你在练习 0 中使用了个人访问令牌，而 Copilot Evals 的运行无法登录**：Copilot Evals 不使用 `COPILOT_GITHUB_TOKEN`，而是使用 GitHub CLI 已存储的登录凭据。请把你的令牌存储到那里：`echo "$COPILOT_GITHUB_TOKEN" | env -u GITHUB_TOKEN gh auth login --with-token`。在你的计算机上，这会替换你的 GitHub CLI 登录，所以请在练习 7 之前重新运行 `gh auth login`。
+- **运行失败并显示 `SDK protocol version mismatch`**：运行器使用的是你的 Copilot CLI，而不是 Vally 自带的运行时。按照第 3 步，让 Copilot 在不指定 Copilot 可执行文件路径的情况下设置运行器，然后再运行一次。
+- **某个批准超时了**：插件的审核内容会等待约三分钟。让 Copilot 重试。
+- **对于 Copilot 启动的运行，仪表板显示 `No runs found`**：Copilot Evals 不会写入 `results.jsonl`。请阅读 `eval-results.md`，或者用 `vally eval` 运行该文件。
+- **你的组织阻止了插件或插件市场**：跟着旁边的同学一起做，或者回家后试试 VS Code 扩展。
+- 更多内容请参阅[故障排除](../../reference/troubleshooting/)和 GitHub Copilot Evals 的[支持页面](https://github.github.io/evals/support/)。
+
+## 小结
+
+引导部分到此结束。现在，你已经能够定义什么是“好”、检查你的检查项、运行试验、阅读运行记录、证明修复有效、校准评审，并让 Copilot 在所有这些环节中帮忙。接下来，按你自己的节奏继续：
+
+- [练习 7：在 CI 中运行评估](../lab-7-ci/)：针对每个拉取请求运行你的评估。
+- [练习 8：比较模型](../lab-8-compare-models/)：在两个模型上运行同一个评估。
+- [练习 9：你自己的智能体](../lab-9-your-own/)：为你自己构建的东西编写评估。

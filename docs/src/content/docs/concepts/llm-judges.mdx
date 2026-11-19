@@ -1,0 +1,105 @@
+---
+title: LLM judges
+description: How an LLM judge grades an answer against a rubric, how to write a good rubric, the ways judges go wrong, and how to calibrate a judge before you trust it.
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+import Flow from '../../../components/Flow.astro';
+
+<figure class="illustration">
+  ![The peach robot judge at a desk examines a release-notes card with a magnifying glass, beside a rubric clipboard and a balance scale; the teal robot agent waits with the next card.](../../../assets/llm-judges.jpg)
+  <figcaption>A second model judges the agent's answers against your rubric.</figcaption>
+</figure>
+
+Some qualities can't be checked with a string match. Does the release note *start* with a summary sentence? Is the tone friendly? Does a note "announce" CT-102 or merely explain why it's missing? For questions like these, you ask a second model to read the answer and decide. That model is an **LLM judge**.
+
+<Flow
+  label="How an LLM judge grades one trial"
+  steps={[
+    { label: 'Answer', detail: 'The agent\'s output (and, if needed, its transcript)', tone: 'agent' },
+    { label: 'Rubric', detail: 'Your criteria, one per line', tone: 'input' },
+    { label: 'Judge model', detail: 'Reads both, decides each criterion', tone: 'grader' },
+    { label: 'Verdict', detail: 'Pass or fail, a score and its reasoning', tone: 'result' },
+  ]}
+/>
+
+## The pieces
+
+- **Judge model**: the model that grades. In the labs it's `gpt-5.6-luna`, a GitHub Copilot model from OpenAI's GPT family, while the agent under test is `claude-sonnet-5.5`, from Anthropic. That difference in model family is what makes the judge more independent; where the judge runs only decides where its requests go and who pays. In YAML: `judge_model`.
+- **Rubric**: the criteria the judge applies, one per line. It's the specification for the judge: everything the judge should check must be in it.
+- **Scoring**: how the judge reports its decision. `binary` means pass or fail. Vally's default, `scale_1_5`, means a score from 1 to 5 that's normalized to 0 to 1 and compared with the grader's own threshold (0.5 by default). That threshold turns the judge's score into the grader's pass or fail; `scoring.threshold` then decides the whole trial, as for any other grader.
+- **Evidence**: what the judge may look at. By default, Vally gives the judge the trajectory evidence: the agent's output, its metrics and the session timeline. So it can check *how* the agent worked, not only the final answer.
+- **Judge provider**: where the judge's requests go. Without one, the judge runs on GitHub Copilot, with the same sign-in as the agent; that's what the labs do. With a `judge_provider` block, you bring your own endpoint and key.
+
+In Vally, a judge is a grader with `type: prompt`, and the rubric sits on the stimulus:
+
+```yaml
+stimuli:
+  - name: completed-work-only
+    prompt: Write the release notes for this release from backlog.json.
+    rubric:                                 # the judge's criteria
+      - The answer announces CT-101 and CT-103 as part of this release.
+      - The answer does not mention CT-102 anywhere.
+      - The answer starts with one short sentence that summarizes the release.
+      - The tone is friendly and the answer is short.
+    graders:
+      - type: prompt                        # the LLM judge
+        name: judge-release-notes-quality
+        config:
+          scoring: binary                   # pass or fail
+```
+
+## Writing a good rubric
+
+- **One criterion per line**, each one checkable on its own.
+- **Specific, not vague.** "The answer does not mention CT-102 anywhere" beats "the answer is accurate".
+- **Decide the edge cases.** Is a note that explains why CT-102 is missing acceptable? Write it down either way. If you don't, the judge decides for you, and it may decide differently next time.
+- **Prefer binary scoring** while you learn. Pass or fail is easier to check against your own judgment than a 1-to-5 scale.
+- **Don't ask the judge what code can check.** "Contains CT-101" is a job for `output-contains`: exact, instant and free.
+
+## How judges go wrong
+
+Research on LLM judges, for example [Zheng et al., 2023](https://arxiv.org/abs/2306.05685), found that strong models agree with human experts about as often as experts agree with each other, but also that they have systematic biases:
+
+| Problem | What happens | What helps |
+| --- | --- | --- |
+| **Self-preference** | A model rates output from its own family more kindly. | Use a judge from a different model family than the agent. |
+| **Verbosity bias** | Longer answers look better, even when they aren't. | Put length or brevity into the rubric explicitly. |
+| **Position bias** | When comparing two answers, the first (or second) one is favored. | Compare in both orders, or grade each answer on its own. |
+| **Leniency and drift** | Vague criteria get generous, inconsistent verdicts. | Specific rubric lines, binary scoring, and calibration. |
+
+## Calibrating a judge
+
+Treat the judge like any other grader: **check it before you trust it.** Give it answers whose verdict you already know, with the [mock executor](../graders/#why-the-mock-executor), and see whether it agrees with you. Where it disagrees, either your rubric is unclear (fix the rubric) or your own expectation was unclear (decide, then fix the rubric).
+
+In [Lab 5](../../labs/lab-5-llm-judge/), you'll calibrate a judge on four known answers and see a code check and the judge disagree, in both directions. Here's what we saw with the workshop's first rubric:
+
+| Known answer | Code check: "no CT-102" | LLM judge | Who's right? |
+| --- | --- | --- | --- |
+| Good: only CT-101 and CT-103, with a summary | <span class="pass">pass</span> | <span class="pass">pass</span> | Both |
+| Wrong: announces CT-102 | <span class="fail">fail</span> | <span class="fail">fail</span> | Both |
+| A note explains why CT-102 is missing | <span class="fail">fail</span> | <span class="pass">pass</span> | Depends on your definition of good |
+| Right items, but no summary sentence | <span class="pass">pass</span> | <span class="fail">fail</span> | The judge: code can't see a missing sentence |
+
+Neither grader is "the smart one". They encode different definitions of good, and the rubric is where you make yours explicit.
+
+In real projects, also compare the judge with people: have a person label a sample of real answers now and then, and track how often the judge agrees.
+
+## Bringing your own judge model
+
+By default, the judge runs on GitHub Copilot. If you prefer to judge on your own model deployment, Vally can send the judge's requests to your endpoint with `judge_provider`. It supports three provider types: `azure` (an Azure OpenAI-style API), `openai` (an OpenAI-compatible API) and `anthropic`. The workshop's optional own-endpoint path uses `azure`, for example for an Azure OpenAI or Microsoft Foundry deployment:
+
+```yaml
+defaults:
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # with judge_provider: the deployment name on your endpoint
+  judge_timeout: 2m
+  judge_provider:
+    type: azure
+    baseUrl: ${JUDGE_BASE_URL=https://set-your-endpoint.invalid/openai/v1/}   # replaced by --param
+    wireApi: responses
+    apiKeyEnv: LLM_API_KEY
+```
+
+You run it with `--param JUDGE_BASE_URL="$LLM_BASE_URL" --param JUDGE_MODEL="$LLM_MODEL"`. [Model access and costs](../../start/model-access/#how-vally-uses-the-key) explains each line, and what Vally sends over the wire; [Lab 5](../../labs/lab-5-llm-judge/) shows the steps.
+
+<LinkCard title="Next: Comparing changes" description="Baselines, variants and controlled experiments." href="../comparing-changes/" />

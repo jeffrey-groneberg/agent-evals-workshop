@@ -1,0 +1,44 @@
+---
+title: Glossary
+description: Every term used in the workshop, with a plain definition, where you meet it, and the Chinese term used on the Chinese pages.
+---
+
+The terms in this workshop, in alphabetical order. The last column shows the term used on the [Chinese pages](../../zh-cn/concepts/glossary/). Code, YAML keys and command names stay in English in both languages.
+
+| Term | Meaning | 中文 |
+| --- | --- | --- |
+| **Agent under test** | The AI agent whose behavior an eval measures: a model with its instructions and tools. In the labs: GitHub Copilot with the release-notes skill. | 被测智能体 |
+| **Baseline** | The version you compare a change against: the "before" in an experiment. | 基线 |
+| **Capability eval** | An eval that asks "can the agent do this yet?". It may start with a low pass rate. | 能力评估 |
+| **Check** | What the GitHub Copilot Evals screens call a grader. | 检查项 |
+| **Code grader** | A grader that checks something exactly, without a model, such as `output-contains`. Fast, free, deterministic. | 代码评分器 |
+| **Control** | An answer you already know is good or bad, used to test your graders. Run with the mock executor. | 对照用例 |
+| **Environment** | What the agent finds when a trial starts: skills, files, settings. Vally rebuilds it for every trial. In YAML: `agent_environment`. | 环境 |
+| **Eval** | A repeatable test for output that can change: tasks, an environment, graders and settings. | 评估（eval） |
+| **Eval spec** | The YAML file that describes an eval, such as `evals/release-notes.eval.yaml`. | 评估规范文件 |
+| **Evidence** | What a grader reports as the reason for its verdict, such as "'CT-102' found in output". | 证据 |
+| **Executor** | The part of Vally that runs the agent. `copilot-sdk` runs GitHub Copilot; `mock` runs no model. | 执行器 |
+| **Experiment** | A controlled comparison of variants of the same eval that differ in declared settings only. | 实验 |
+| **Flaky** | A task whose trials sometimes pass and sometimes fail. A sign of unreliable behavior, not an error. | 不稳定 |
+| **GitHub Copilot Evals** | GitHub's assistant for evals (in preview): Copilot helps you create, review, improve, run and compare evals, which run in Vally. | GitHub Copilot Evals |
+| **Grader** | One test of a trial's answer, transcript or workspace. Returns pass or fail, a score and evidence. | 评分器 |
+| **Judge provider** | The endpoint and key the LLM judge uses ("bring your own key"). In YAML: `judge_provider`. | 评审模型提供方 |
+| **LLM judge** | A grader that asks a second model to grade an answer against a rubric. In Vally: `type: prompt`. | LLM 评审 |
+| **Mock executor** | An executor that calls no model and returns the prompt text as the answer. Used for controls: free, instant, deterministic. | 模拟执行器（mock） |
+| **Negative check** | A check that passes when something is absent. In Vally: `negate: true`. | 否定检查 |
+| **Outcome** | What a trial produced: the final answer and the state of the workspace afterwards. | 产出结果 |
+| **Param** | A placeholder in an eval file, such as `${JUDGE_BASE_URL}`, filled in with `--param` or a default. | 参数（param） |
+| **pass@k** | "Pass at k": can the agent do this at all, given k tries? In Vally's reports, k is the number of trials, so pass@k is 1 if at least one trial passed, else 0. | pass@k |
+| **pass^k** | "Pass hat k": the estimated chance that k runs in a row all pass, p<sup>k</sup>, where p is the pass rate. "Can I rely on it?" | pass^k |
+| **Pass rate** | The fraction of trials that passed, such as 2 of 3. | 通过率 |
+| **Regression eval** | An eval that asks "does the agent still do what it used to?". It should pass close to 100% of the time. | 回归评估 |
+| **Rubric** | The written criteria an LLM judge applies, one per line. In YAML: `rubric`. | 评分标准（rubric） |
+| **Score** | A number from 0 to 1. A grader's score, or a trial's score: the average of its graders' scores. | 分数 |
+| **Skill** | A folder with a `SKILL.md` file: instructions an agent loads for a kind of task. | 技能（skill） |
+| **Stimulus** | Vally's name for one task: the prompt and everything specific to it. In YAML: `stimuli`. | 任务（stimulus） |
+| **Suite** | A named group of evals you run together. In `.vally.yaml`; run with `--suite`. | 套件 |
+| **Threshold** | The score a trial needs to pass. With `threshold: 1`, every check must pass. | 阈值 |
+| **Transcript** | The full record of a trial: messages, tool calls, results, tokens. Vally calls it the trajectory. | 运行记录（transcript） |
+| **Trial** | One run of one task. You run several, because agents vary. | 试验（trial） |
+| **Vally** | Microsoft's platform for AI evals; the command-line engine that runs every eval in the workshop. | Vally |
+| **Variant** | A version of an eval in an experiment with one deliberate change. | 变体 |

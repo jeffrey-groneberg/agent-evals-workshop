@@ -1,0 +1,131 @@
+---
+title: 'Lab 1: Define good'
+description: Before any run, write down what a good answer must and must not do, decide which criteria code can check, and judge four real answers.
+sidebar:
+  label: '1. Define good'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../components/LabMeta.astro';
+import EvalMap from '../../../components/EvalMap.astro';
+import Pieces from '../../../components/Pieces.astro';
+
+<LabMeta time="10 minutes" cost="None" uses="Pen and paper, or a scratch file" />
+
+<figure class="illustration">
+  ![A planning table: a clipboard checklist with green checks for must-haves and coral crosses for must-nots, a pencil, and four answer cards in a row with one green check and three coral crosses above them. The teal robot sits idle at the edge of the table.](../../../assets/labs/lab-1.jpg)
+  <figcaption>Decide what good means before the first run: must, must not, and your verdict on four real answers.</figcaption>
+</figure>
+
+An eval can only measure what you've defined. In this lab you write down what "good" means for the release-notes skill **before** you run anything. That's the most important step of the whole workshop: everything after it turns these criteria into checks.
+
+<EvalMap
+  doing="Write down what a good answer must and must not do, then judge four real answers by hand."
+  testing="Your definition of good: would two people reach the same verdict?"
+  checking="You, with your own criteria"
+  task={{ text: 'Write the release notes from <code>backlog.json</code>', state: 'new' }}
+  checks={{ text: 'Your criteria, on paper: must and must not', state: 'new' }}
+  results={{ text: 'Your verdicts on four answers', state: 'new' }}
+/>
+
+## The pieces you'll work with
+
+<Pieces
+  items={[
+    { term: 'Task (stimulus)', def: 'The request you give the agent. Here: "Write the release notes for this release from backlog.json."', analogy: 'the question on an exam', where: 'later: <code>prompt:</code> in the eval file', isNew: true },
+    { term: 'Success criteria', def: 'The statements a good answer must satisfy, written so that two people would agree on the verdict.', analogy: 'the marking scheme', where: 'now: your notes; later: graders and a rubric', isNew: true },
+    { term: 'Positive and negative criteria', def: 'What must be in the answer ("announces CT-101"), and what must not ("never mentions CT-102").', analogy: 'must-haves and must-nots', where: 'later: <code>negate: true</code> on a check', isNew: true },
+    { term: 'Code-checkable vs judgment', def: 'Some criteria code can check exactly (a text is present); others need judgment (the tone is friendly). The first kind becomes a code grader, the second an LLM judge.', analogy: 'a spell checker vs an editor', where: 'Lab 2 (code checks) and Lab 5 (judge)', isNew: true },
+  ]}
+/>
+
+## Why this matters
+
+If you define "good" after you've seen the agent's answers, you'll unconsciously define it as "whatever the agent did". And if two people disagree whether an answer passes, the eval measures that disagreement, not the agent. A good task is one where two experts would independently reach the same verdict.
+
+## Steps
+
+<Steps>
+
+1. Open the skill, `.github/skills/release-notes/SKILL.md`, and the data it works with, `backlog.json`.
+
+   You already know the bug from the [overview](../../start/overview/#the-running-example): the skill says to list **every** backlog item, but CT-102 is still `in-progress`.
+
+2. Imagine you're the release manager who will publish these notes to customers. Write down what a good answer **must** do and what it **must not** do. Aim for four to six short statements, on paper or in a new file, `notes.md`, in the repository's root folder.
+
+3. Next to each statement, mark whether **code** could check it exactly (for example, "contains the text CT-101") or whether it needs **judgment** (for example, "the tone is friendly").
+
+4. Now judge four real answers. Three come from GitHub Copilot running the skill; one was written by hand. They're in `lab-files/lab-1/sample-answers.md`: right-click it in the Explorer and select **Open Preview** to read them formatted.
+
+   For each answer, A to D, write **pass** or **fail**, and the criterion that decided it.
+
+5. Compare your verdicts with ours below. Where you disagree, ask yourself whether your criteria or ours are clearer.
+
+</Steps>
+
+## Compare with ours
+
+<details>
+<summary>Our criteria</summary>
+
+| # | Criterion | Code or judgment? |
+| --- | --- | --- |
+| 1 | Announces CT-101 (Search across all projects) | Code: the answer contains `CT-101` |
+| 2 | Announces CT-103 (Dark mode for the dashboard) | Code: the answer contains `CT-103` |
+| 3 | Never mentions CT-102, not even in a note: anything in the answer can get published | Code: the answer doesn't contain `CT-102` |
+| 4 | Uses the release-notes skill | Code: the transcript shows the skill was invoked |
+| 5 | Leaves `backlog.json` alone | Code, partly: the file still contains `"status": "in-progress"` |
+| 6 | Starts with one short sentence that summarizes the release | Judgment |
+| 7 | Is friendly and short | Judgment |
+
+We allow any order of the bullets and any wording of the summary sentence.
+
+</details>
+
+<details>
+<summary>Our verdicts on answers A to D</summary>
+
+| Answer | Verdict | Why |
+| --- | --- | --- |
+| A | <span class="fail">Fail</span> | Announces CT-102 as a feature of this release (criterion 3). |
+| B | <span class="fail">Fail</span> | Leaves CT-102 out of the list, but the note mentions it and even offers a ready-made bullet for it (criterion 3). |
+| C | <span class="pass">Pass</span> | Only CT-101 and CT-103, with a summary sentence first. |
+| D | <span class="fail">Fail</span> | The right items, but no summary sentence (criterion 6). A code check can't see that. |
+
+</details>
+
+**Answer B is the interesting one.** The agent noticed the problem and did something sensible, and many people would pass it. We fail it, because the note still announces CT-102 to whoever reads the release notes. Whatever you decide, decide it now and write it down: that's exactly the decision an eval needs. You'll meet answer B again in Lab 5, where a code check and an LLM judge disagree about it.
+
+## What just happened
+
+You wrote the specification for your eval. In the next labs, each criterion becomes a check:
+
+| Criterion | Becomes | Lab |
+| --- | --- | --- |
+| 1, 2 | `output-contains` checks (positive) | 2 |
+| 3 | an `output-contains` check with `negate: true` (negative) | 2 |
+| 4 | a `skill-invocation` check on the transcript | 3 |
+| 5 | a `file-contains` check on the workspace | 3 |
+| 6, 7 | rubric lines for an LLM judge | 5 |
+
+## Check yourself
+
+<details>
+<summary>Why write the criteria before the first run?</summary>
+
+Because after you've seen the answers, you tend to adjust "good" to what the agent did. Criteria written first are an honest measure; criteria written after are a description.
+
+</details>
+
+<details>
+<summary>The backlog check passes. Does that prove the agent edited no files?</summary>
+
+No. It proves only that `backlog.json` still contains the text `"status": "in-progress"`. The agent could have changed another file, another line, or even moved that status to another item. Name every check after exactly what it tests. And when an agent writes "I didn't edit any files", that's a claim, not evidence.
+
+</details>
+
+## Stuck?
+
+There's nothing to get stuck on here, but if you're short of time, take our criteria above and move on.
+
+**Next:** [Lab 2: Check your checks](../lab-2-check-your-checks/)

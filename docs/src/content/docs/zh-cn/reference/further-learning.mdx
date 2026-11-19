@@ -1,0 +1,47 @@
+---
+title: 延伸学习和参考资料
+description: 工作坊结束后可以继续学习的动手练习和实战示例，以及本工作坊所依据的参考资料。
+---
+
+## 继续做这些练习
+
+所有链接均于 2026 年 11 月检查过。GitHub Copilot Evals 目前处于预览阶段，因此它的页面经常变化。
+
+### 从这里开始
+
+| 练习 | 你要做什么 | 链接 |
+| --- | --- | --- |
+| 运行你的第一个评估（GitHub Copilot Evals） | 挑选你自己的一个技能（skill）、智能体或 MCP 工具，描述怎样才算成功，起草并检查评估（eval），批准一次运行，然后阅读结果 | [github.github.io/evals/journeys/first-eval](https://github.github.io/evals/journeys/first-eval/) |
+| 运行你的第一个评估（Vally） | 安装 Vally CLI，运行 `vally init` 和 `vally eval`，阅读评分器给出的证据 | [microsoft.github.io/vally/get-started/run-your-first-eval](https://microsoft.github.io/vally/get-started/run-your-first-eval/) |
+| 改进现有评估（GitHub Copilot Evals） | 保留原始版本，一次只改一处，比较已保存的运行 | [github.github.io/evals/journeys/improve-an-eval](https://github.github.io/evals/journeys/improve-an-eval/) |
+| 设置 GitHub Actions（GitHub Copilot Evals） | `.vally.yaml`、使用 `github/evals-action@v0` 的工作流、标记为 `lane: ci` 的评估，以及拉取请求评论 | [github.github.io/evals/journeys/ci-setup](https://github.github.io/evals/journeys/ci-setup/) |
+
+### 深入学习
+
+| 练习或示例 | 你要做什么 | 链接 |
+| --- | --- | --- |
+| 编写评估规范文件（Vally） | 为你自己的智能体编写任务（stimulus）、评分器和基于评分标准（rubric）的评审 | [microsoft.github.io/vally/guides/writing-eval-specs](https://microsoft.github.io/vally/guides/writing-eval-specs/) |
+| 运行你的第一个实验（Vally） | 用 `vally compare --fail-on-regression` 比较两个变体 | [microsoft.github.io/vally/guides/run-your-first-experiment](https://microsoft.github.io/vally/guides/run-your-first-experiment/) |
+| copilot-smoke 示例（`github/evals-action`） | 最小的端到端 CI 示例：一个技能、一个评估、一个工作流 | [github.com/github/evals-action/tree/main/examples/copilot-smoke](https://github.com/github/evals-action/tree/main/examples/copilot-smoke) |
+| Harness 评估（dotnet/efcore） | 阅读一个真实项目为其 Copilot 指令、技能、智能体和提示词编写的 Vally 评估 | [github.com/dotnet/efcore/tree/main/eng/harness-evaluation](https://github.com/dotnet/efcore/tree/main/eng/harness-evaluation) |
+| 使用 Vally 进行测试（microsoft/mcp） | 为 MCP 工具生成工具调用检查项，并用 Vally 运行它们 | [github.com/microsoft/mcp/blob/main/docs/testing-with-vally.md](https://github.com/microsoft/mcp/blob/main/docs/testing-with-vally.md) |
+| 使用 Vally 评估托管技能（Microsoft Learn） | 一个针对托管技能的 `eval.yaml`，运行时设有通过门槛 | [learn.microsoft.com/…/functions-hosted-skills-evaluation](https://learn.microsoft.com/azure/azure-functions/functions-hosted-skills-evaluation) |
+
+### 如果你的智能体运行在 Microsoft Foundry 上
+
+| 练习 | 你要做什么 | 链接 |
+| --- | --- | --- |
+| 使用 Microsoft Foundry 和 GitHub Actions 自动执行 AI 评估 | 在数据集上运行云端评估器，并设置拉取请求门禁 | [Microsoft Learn 培训](https://learn.microsoft.com/training/modules/automated-evaluation-genaiops/) |
+| 快速入门：评估你的托管智能体 | 数据集、评估器、一次运行，以及将基线与更新后的版本进行比较 | [Microsoft Learn](https://learn.microsoft.com/azure/foundry/observability/quickstarts/quickstart-evaluate-hosted-agent) |
+
+## 参考资料
+
+本工作坊中的概念参考了以下资料：
+
+- **Vally 文档**：[microsoft.github.io/vally](https://microsoft.github.io/vally/)，尤其是其中的[评估文件参考](https://microsoft.github.io/vally/reference/eval-spec/)、[实验文件](https://microsoft.github.io/vally/reference/experiment-file/)、[评分器](https://microsoft.github.io/vally/reference/graders/)和[运行时设置](https://microsoft.github.io/vally/get-started/runtime-setup/)。
+- **GitHub Copilot Evals 文档**：[github.github.io/evals](https://github.github.io/evals/)，包括其中的[发布说明对照用例示例](https://github.github.io/evals/examples/release-note-control.eval.yaml)。
+- **`github/evals-action`**：[README](https://github.com/github/evals-action)。
+- **GitHub 文档**：[对 GitHub Copilot CLI 进行身份验证](https://docs.github.com/copilot/how-tos/copilot-cli/set-up-copilot-cli/authenticate-copilot-cli)。
+- **Anthropic**：[Demystifying evals for AI agents](https://www.anthropic.com/research/demystifying-evals-for-ai-agents)：任务、试验、评分器、运行记录（transcript）、能力评估和回归评估，以及 pass@k 和 pass^k。
+- **Chen 等，2021**：[Evaluating Large Language Models Trained on Code](https://arxiv.org/abs/2107.03374)：无偏的 pass@k 估计量。
+- **Zheng 等，2023**：[Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena](https://arxiv.org/abs/2306.05685)：LLM 评审与人类判断的一致程度，以及它们的偏差。

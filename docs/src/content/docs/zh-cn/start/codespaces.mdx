@@ -1,0 +1,122 @@
+---
+title: 在 Codespace 中搭建环境
+description: 复制一份你自己的起始存储库，然后在 GitHub Codespace 中打开它：所有工具都已预装，Copilot 登录也已就绪。
+---
+
+import { LinkCard, Steps } from '@astrojs/starlight/components';
+
+[GitHub Codespace](https://docs.github.com/codespaces/overview) 是一个云端开发环境：在浏览器中运行的 VS Code，外加一个 Linux 终端。本工作坊的 Codespace 已预装 Node.js 24、Vally CLI 0.21.0、GitHub Copilot CLI、jq 和 GitHub CLI，还会替你把评估（eval）运行器登录到 GitHub Copilot。你不需要在自己的计算机上安装任何东西，也不需要创建令牌。
+
+请预留约 5 分钟。这两个步骤都可以在工作坊开始前完成。
+
+## 1. 创建你自己的存储库副本
+
+本网站位于一个存储库中，而你要操作的文件位于另一个存储库，即**起始存储库**，你需要复制它。
+
+<Steps>
+
+1. 打开起始存储库：[jeffrey-groneberg/agent-evals-workshop-starter](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter)。
+
+2. 选择 **Use this template** > **Create a new repository**。
+
+3. 选择你的个人帐户作为所有者，将存储库命名为 `agent-evals-workshop-starter`，选择 **Private** 或 **Public**，然后选择 **Create repository**。
+
+</Steps>
+
+工作坊结束后，你的副本会保留你的成果；[练习 7](../../labs/lab-7-ci/) 也需要用到它，届时 GitHub Actions 会在拉取请求上运行你的评估。沿用起始存储库的名称，既能把你的副本与本网站的存储库 `agent-evals-workshop` 区分开，也能让你的文件夹与直接基于起始存储库打开的 Codespace 中的文件夹同名。
+
+:::note[时间紧张？]
+你也可以使用起始存储库 README 中的 **Open in GitHub Codespaces** 按钮，直接基于起始存储库打开一个 Codespace。除练习 7 外，这种方式适用于所有练习。如果你之后想保留自己的成果，GitHub 会在你推送时提议创建一个复刻（fork）。
+:::
+
+## 2. 创建 Codespace
+
+<Steps>
+
+1. 在**你自己的**存储库页面上，选择 **Code** > **Codespaces** > **Create codespace on main**。
+
+2. 浏览器会打开 VS Code，终端会执行初始化设置：安装 Vally CLI 和 GitHub Copilot CLI。等到终端输出 `Workshop setup complete` 为止，这需要 2 到 4 分钟。
+
+3. 在终端中运行环境检查：
+
+   ```bash
+   ./scripts/check-setup.sh
+   ```
+
+   输出的结尾如下：
+
+   ```text
+   GitHub Copilot sign-in (for the agent under test and the LLM judge)
+     ✔ Your Codespace's own token (GITHUB_TOKEN): Vally runs the agent in a clean, isolated Copilot home
+     ✔ Agent model in the eval files: claude-sonnet-5.5 (not on your plan? scripts/use-model.sh <model>)
+     ✔ LLM judge in Lab 5: gpt-5.6-luna, on your Copilot plan (another model: --param JUDGE_MODEL=<model>)
+         The real test: vally eval -e lab-files/lab-0/setup-check.eval.yaml (one Copilot request)
+
+   Your own model endpoint (optional: without one, the judge runs on your Copilot plan)
+     ✔ Not set, and not needed
+
+   Ready.
+   ```
+
+
+   这项检查不会发起任何网络调用。真正检验你登录是否成功的，是[练习 0](../../labs/lab-0-setup/) 中那个很小的评估。
+
+</Steps>
+
+## 评估运行器如何登录
+
+你要评估的智能体是 GitHub Copilot，练习 5 中的 LLM 评审也在 Copilot 上运行。因此，评估运行器 Vally 会代表你向 Copilot 发送请求，为此它需要一个令牌。
+
+你的 Codespace 已经有一个令牌。GitHub 会为每个 Codespace 提供它自己的令牌，放在其终端的 `GITHUB_TOKEN` 变量中：Codespace 每次启动或重启时都会获得一个新令牌，令牌也会自动过期。这个令牌代表你本人，所以 Copilot 会接受它，这些请求也会像你自己使用 Copilot 一样计入你的 Copilot 计划。Vally 会自行找到这个令牌，GitHub Copilot CLI 也一样，所以你在练习 6 中也不需要运行 `copilot login`。
+
+使用令牌登录还能让每次运行都保持干净。Vally 会在一个空的、隔离的 Copilot 主目录中启动智能体，因此你个人的 Copilot 设置、技能（skill）和插件都无法影响结果；你会在[练习 3](../../labs/lab-3-run-the-agent/#为什么干净的环境很重要) 中看到这一点有多重要。Vally 还会把 `COPILOT_GITHUB_TOKEN`、`GH_TOKEN` 和 `GITHUB_TOKEN` 从智能体所运行的每条命令的环境中移除，因此令牌不会直接交给智能体。不过，智能体的命令仍以你的身份运行，所以请只评估你信任的智能体和技能。
+
+## 如果练习 0 无法登录
+
+如果练习 0 中的评估以 `Not authenticated` 或其他登录错误结束，请给 Vally 一个专用的令牌：一个只能向 Copilot 发送请求的细粒度个人访问令牌。
+
+<Steps>
+
+1. 打开[细粒度个人访问令牌](https://github.com/settings/personal-access-tokens/new)页面。
+
+2. 为令牌设置一个名称（例如 `agent-evals-workshop`）和过期时间（例如 30 天）。
+
+3. 在 **Resource owner** 下，选择你的**个人帐户**，而不是某个组织。只有归你个人帐户所有的令牌才提供 Copilot Requests 权限。
+
+4. 在 **Repository access** 下，保留 **Public repositories**。这个令牌不需要访问任何存储库。
+
+5. 在 **Permissions** 下，打开 **Account** 选项卡，选择 **Add permissions**，然后选择 **Copilot Requests**。
+
+6. 选择 **Generate token**，然后复制令牌。令牌只会显示这一次，它以 `github_pat_` 开头。
+
+
+7. 按照[添加或更改机密](#添加或更改机密)中的说明，把它存储为名为 `COPILOT_GITHUB_TOKEN` 的 Codespaces 机密，然后重启 Codespace。Vally 会先使用 `COPILOT_GITHUB_TOKEN`，然后才是 `GITHUB_TOKEN`；此时环境检查会报告 `COPILOT_GITHUB_TOKEN, a fine-grained personal access token`。
+
+</Steps>
+
+:::caution[妥善保管令牌]
+像对待密码一样对待它：不要把它粘贴到文件、聊天或屏幕截图中，也绝不要提交它。GitHub 会对 Codespaces 机密加密，并且只会把它们放进你自己的 Codespace。如果工作坊结束后不再需要这个令牌，请删除它。
+:::
+
+## 添加或更改机密
+
+打开 [Codespaces 设置](https://github.com/settings/codespaces)，在 **Secrets** 下选择 **New secret**（或更新现有的机密）。输入机密的名称（例如 `COPILOT_GITHUB_TOKEN`），粘贴值，然后在 **Repository access** 下选择你的起始存储库副本。正在运行的 Codespace 需要重启后才能获取更改：在 VS Code 中打开 Command Palette（命令面板），运行 **Codespaces: Stop Current Codespace**，然后从存储库的 **Code** > **Codespaces** 菜单中重新打开它。
+
+**要让评审使用你自己的模型终结点**？这是可选的，请参阅[模型访问与费用](../model-access/#你自己的模型终结点可选)。用同样的方法添加三个机密：`LLM_BASE_URL`、`LLM_API_KEY` 和 `LLM_MODEL`，然后重启 Codespace。接着运行 `./scripts/check-setup.sh --ping`，它还会向你的终结点发送一个小请求。
+
+如果只想在当前终端中快速测试，你也可以用下面的命令设置一个值，而不让它显示在屏幕上或留在 shell 历史记录中：
+
+```bash
+read -rs LLM_API_KEY && export LLM_API_KEY
+```
+
+粘贴密钥并按 Enter 后，这个变量会一直有效，直到你关闭该终端。在直接基于起始存储库打开的 Codespace 中，这种方法同样适用；在那里 GitHub 不会添加你的机密，因为你对该存储库没有写入权限。
+
+## 完成之后
+
+休息时请停止 Codespace，完成工作坊后请删除它：**Code** > **Codespaces** > **...** > **Delete**。已停止的 Codespace 不会使用计算资源，但其存储空间仍会计入用量。个人 GitHub 帐户每月包含一定额度的免费 Codespaces 使用量；请参阅[关于 GitHub Codespaces 的计费](https://docs.github.com/billing/managing-billing-for-your-products/managing-billing-for-github-codespaces/about-billing-for-github-codespaces)。
+
+## 下一步
+
+<LinkCard title="模型访问与费用" description="智能体和评审在哪里运行，以及你需要为什么付费。" href="../model-access/" />
+<LinkCard title="练习 0：设置与检查" description="运行一个很小的真实评估，确认一切正常。" href="../../labs/lab-0-setup/" />

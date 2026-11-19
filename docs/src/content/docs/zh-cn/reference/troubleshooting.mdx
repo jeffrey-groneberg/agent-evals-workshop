@@ -1,0 +1,103 @@
+---
+title: 故障排除
+description: 工作坊中最常遇到的问题及其解决方法，涵盖登录、模型、lint 错误、评审错误和 CI。
+---
+
+在下面找到你遇到的错误消息或症状。还是没解决？如果你在工作坊现场，请向讲师求助。否则，请在[本站点的存储库](https://github.com/jeffrey-groneberg/agent-evals-workshop/issues)中创建议题。
+
+## 安装和设置
+
+| 症状 | 解决方法 |
+| --- | --- |
+| `vally: command not found` | 运行 `npm install -g @microsoft/vally-cli@0.21.0`。在 Codespace 中，如果设置失败，请重新运行 `bash .devcontainer/post-create.sh`。 |
+| `npm install -g` 失败，并报 `ENOTCONN`、`ETIMEDOUT` 或代理错误 | 你的网络可能需要使用镜像源或代理。请向你的组织确认应使用哪个 npm 注册表，并通过 `npm install -g --registry <url> @microsoft/vally-cli@0.21.0 @github/copilot` 指定它。在中国大陆，许多开发者使用公共镜像源，例如 `https://registry.npmmirror.com`。 |
+| `Node.js … is too old` | 安装 Node.js 24。Vally 需要 22.15 或更高版本；GitHub Copilot Evals 需要 24。 |
+| `check-setup.sh` 提示某个机密未设置，但你已经添加了它 | 正在运行的 Codespace 只有在重启后才会读取新的机密：命令面板 > **Codespaces: Stop Current Codespace**，然后重新打开它。 |
+| 运行脚本时出现 `Permission denied` | 运行 `chmod +x scripts/*.sh`，或用 `bash scripts/<name>.sh` 启动脚本。 |
+| 在 Windows 上，脚本无法运行 | 请使用 WSL 或 Codespace。这些脚本是 Bash 脚本。 |
+
+## 登录 Copilot
+
+| 症状 | 解决方法 |
+| --- | --- |
+| 试验开始时出现 `Not authenticated` 或其他登录错误 | 在 Codespace 中，打开一个新终端后重新运行：Codespace 的终端中有 `GITHUB_TOKEN`。在你的电脑上，运行 `gh auth login`，然后重新加载 `.env`：`set -a; source .env; set +a`。仍然失败？给 Vally 一个只有 **Copilot Requests** 权限的细粒度令牌：请参阅[如果练习 0 无法登录](../../start/codespaces/#如果练习-0-无法登录)。 |
+| 加载 `.env` 时出现 `no oauth token found for github.com` | GitHub CLI 尚未登录。运行 `gh auth login`，然后重新加载 `.env`。 |
+| `check-setup.sh` 显示 `No sign-in found` | 在你的电脑上，创建 `.env`（`cp .env.example .env`），并在当前终端中加载它：`set -a; source .env; set +a`。在 Codespace 中，打开一个新终端。 |
+| `COPILOT_GITHUB_TOKEN is a classic token (ghp_)` | Copilot 不接受经典令牌。如果 GitHub CLI 是用经典令牌登录的，请重新运行 `gh auth login`，并选择 **Login with a web browser**。或者改用细粒度令牌。 |
+| 你已用 `copilot login` 登录，但 Vally 仍然无法登录 | 只有设置了 `EVALUATE_USE_HOST_COPILOT_HOME=1`，Vally 才会复用这次登录。请参阅[改用 Copilot CLI 登录](../../start/local/#改用-copilot-cli-登录)。 |
+| `check-setup.sh` 警告说 `EVALUATE_USE_HOST_COPILOT_HOME=1` 也已设置 | 在 `.env` 中把那一行重新注释掉，打开一个新终端并在其中加载 `.env`，这样才会改用令牌进行干净、隔离的运行。如果你把那一行加到了 `~/.bashrc` 中，也要从那里删除。 |
+| 你的组织不允许使用 Copilot CLI | 请询问你的管理员，或者使用一个拥有 Copilot 计划的个人帐户。 |
+
+## 模型
+
+| 症状 | 解决方法 |
+| --- | --- |
+| 模型 `claude-sonnet-5.5` 不可用 | 启动 `copilot`，输入 `/model`，选择一个你可用的模型，然后运行一次 `./scripts/use-model.sh <id>`：它会切换所有评估（eval）文件中的模型。 |
+| Copilot CLI 提示模型由管理员管理 | 你的组织为 Copilot CLI 对话选定了模型。Vally 的运行使用评估文件中或 `--model` 指定的模型，前提是你的计划允许使用该模型。 |
+| 你的结果与这些页面上的结果不同 | 这在意料之中：智能体每次运行的表现都会有所不同。请比较模式（哪些检查项失败了，以及失败的原因），而不是确切的措辞。真正会改变测量结果的差异是：换了模型、使用了 `EVALUATE_USE_HOST_COPILOT_HOME=1`，或者技能（skill）已经被你修改过。 |
+
+## 评估文件和 lint
+
+| 消息 | 解决方法 |
+| --- | --- |
+| `duplicate-grader-name` | 文件中每个评分器的名称都必须唯一。请为每个任务（stimulus）加上各自的前缀。 |
+| `undefined-param` | 某个 `${KEY}` 占位符没有值。请传入 `--param KEY=value`，或者为它指定默认值：`${KEY=value}`。 |
+| `environment-file-not-found` | `agent_environment` 中的某个路径有误。路径是相对于评估文件的，因此 `evals/` 中的文件要使用 `../backlog.json`。 |
+| 编辑后出现 YAML 错误 | 检查缩进：`graders:` 下的列表项必须全部从同一列开始。 |
+| `regression-without-baseline`（警告） | `type: regression` 需要基线配置。除非你配置了基线，否则请保留 `type: capability`。 |
+
+## 运行
+
+| 症状 | 解决方法 |
+| --- | --- |
+| 试验超时 | 重新运行，或调高评估中的 `timeout`。带评审的试验耗时更长：在我们的运行中大约需要两分钟。 |
+| 试验显示 `ERROR`，例如 `Session disconnected while waiting for a response` | 试验没有完成，通常是因为临时的连接问题。Vally 将其计为错误，既不算通过也不算失败，因此它也会让 token 和耗时的比较失真。请重新运行。 |
+| `release-notes-skill-used` 失败 | 检查你是否在安装了许多个人技能的情况下使用了 `EVALUATE_USE_HOST_COPILOT_HOME=1`：智能体可能会直接读取技能文件，而不是调用该技能。请改用令牌。请参阅[练习 3](../../labs/lab-3-run-the-agent/#为什么干净的环境很重要)。 |
+| 某个实验变体显示错误且没有分数 | 实验文件中的某个技能路径有误。路径是相对于 `experiments/` 的。 |
+| 仪表板在 Codespace 中打不开 | 用 `--allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"` 启动它，然后从 **Ports** 面板打开端口 3200。 |
+
+## LLM 评审
+
+| 症状 | 解决方法 |
+| --- | --- |
+| 你的计划中没有评审模型 `gpt-5.6-luna` | 启动 `copilot` 并输入 `/model`，查看你可用的模型。选择其中一个，最好与智能体的模型属于不同的模型系列，然后用 `--param JUDGE_MODEL=<model-id>` 运行。 |
+| 每个评审评分都显示 `Grading error; verdict is invalid` | 评审无法给出回答，因此 Vally 拒绝计入该评分。请用 `./scripts/check-setup.sh` 检查你的 Copilot 登录状态，并确认评审模型在你的计划中可用。然后重新运行。如果使用你自己的终结点，请参阅下一节。 |
+| `LLM judge failed: Model "…" is not available in Copilot` | 评估指定的评审模型不在你的计划中，或者根本没有指定，于是 Vally 使用了它自己的默认评审模型。请在评估文件的 `defaults` 中，将 `judge_model` 设置为 `/model` 中列出的某个模型，例如 `gpt-5.6-luna`。GitHub Copilot Evals 生成的草稿可能会漏掉这一项。 |
+
+## 你自己的模型终结点
+
+以下内容仅适用于在你自己的终结点上运行评审的情况；请参阅[模型访问与费用](../../start/model-access/#你自己的模型终结点可选)。
+
+| 症状 | 解决方法 |
+| --- | --- |
+| 错误消息中出现 `set-your-endpoint.invalid` | 你运行时没有加上 `--param JUDGE_BASE_URL="$LLM_BASE_URL"`，或者当前终端中的 `LLM_BASE_URL` 为空。 |
+| `LLM_BASE_URL still holds an example value` | 把你真实的终结点填入 Codespaces 机密或你的 `.env` 文件。 |
+| `check-setup.sh` 提示某个 `LLM_` 变量未设置 | 你只设置了三个变量中的一部分。要使用你自己的终结点，就把三个都设置好；要在你的 Copilot 计划上运行评审，就一个都不要设置。 |
+| `LLM judge failed: 401` 或 `403` | 终结点拒绝了密钥：密钥有误或已过期。请检查 `LLM_API_KEY`。 |
+| `LLM judge failed: 404` | 检查 `LLM_BASE_URL` 是否以 `/openai/v1/` 结尾、`LLM_MODEL` 是否为部署名称，以及你是否用 `--param JUDGE_MODEL="$LLM_MODEL"` 传入了它。 |
+| `LLM judge failed: 429` | 终结点繁忙或超出了配额。请等一分钟，然后重新运行。 |
+| `LLM judge failed: 400` | 终结点拒绝了请求。部署必须是支持 Responses API 的 GPT-5 系列推理模型。 |
+| 你想重新在 Copilot 上运行评审 | 从评估文件中删除 `judge_provider` 块，并在运行时去掉 `--param` 选项。 |
+
+## GitHub Copilot Evals
+
+| 症状 | 解决方法 |
+| --- | --- |
+| 无法识别 `copilot plugin` | 更新 Copilot CLI：`npm install -g @github/copilot`。 |
+| Copilot 没有使用 Evals 技能 | 开始一个新对话，并检查 `copilot plugin list --json`。 |
+| 缺少 `/eval` 命令 | 这些命令需要实验模式：先输入 `/experimental`，再开始一个新对话。自然语言请求无需实验模式即可使用。 |
+| 运行失败并显示 `GitHub CLI sign-in is unavailable for github.com` | Copilot Evals 的运行使用 GitHub CLI 已存储的登录凭据，而 Copilot CLI 会对插件隐藏令牌变量。在 Codespace 中，运行 `echo "$GITHUB_TOKEN" \| env -u GITHUB_TOKEN gh auth login --with-token`；在你的电脑上，运行 `gh auth login`。然后让 Copilot 再运行一次。请参阅[练习 6 的第 2 步](../../labs/lab-6-copilot-evals/)。 |
+| 运行失败并显示 `SDK protocol version mismatch: SDK supports versions 3-3, but server reports version 4` | 运行器使用的是你的 Copilot CLI，它比 Vally 0.21.0 自带的 Copilot 运行时更新。请对 Copilot 说：`Set up the eval runner for this project with Node and Vally only, without a Copilot executable path.` 然后再运行一次。 |
+| 批准某个工具后出现 `MCP error -32001: Request timed out` | 插件自己的审核内容等待了约三分钟，没有得到回答。让 Copilot 重试，并在审核内容出现时回答它。 |
+| 对于 Copilot 启动的运行，仪表板显示 `No runs found` | Copilot Evals 不会写入 `results.jsonl`。请打开 `vally-results/eval-run-<id>/<date-and-time>/` 中的 `eval-results.md`，或者用 `vally eval -e <file>` 运行该文件。 |
+| Copilot Evals 无法保存或验证草稿：`Symbolic links/junctions are not inspected` | 存储库的路径或你的主目录路径经过了符号链接；在 macOS 上，`/tmp` 就是一个符号链接。请把存储库克隆到一个普通文件夹中，例如你主目录下的某个文件夹，然后在那里启动 Copilot。 |
+| 更多 | GitHub Copilot Evals 的[支持页面](https://github.github.io/evals/support/)。 |
+
+## CI（练习 7）
+
+| 症状 | 解决方法 |
+| --- | --- |
+| 工作流没有启动 | 拉取请求必须更改工作流 `paths` 所列某个路径下的文件，并且必须启用 Actions。 |
+| 作业在 lint 步骤失败 | `evals/` 中的某个评估存在 lint 错误。请在本地运行 `vally lint -e evals --strict`。 |
+| `gh: command not found`（在你的电脑上） | 安装 GitHub CLI 并运行 `gh auth login`。 |
+| Actions 中不允许使用 Copilot | 对于组织的存储库，必须由组织所有者允许使用计费到该组织的 Copilot CLI。 |

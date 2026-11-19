@@ -1,0 +1,247 @@
+---
+title: 'Lab 4: Fix it and prove it'
+description: Fix the release-notes skill, then prove that the fix made the difference with a controlled experiment that changes nothing but the skill.
+sidebar:
+  label: '4. Fix it and prove it'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../components/LabMeta.astro';
+import EvalMap from '../../../components/EvalMap.astro';
+import Pieces from '../../../components/Pieces.astro';
+
+<LabMeta time="15 minutes" cost="6 Copilot runs, plus 3 if you rerun the eval" uses=".github/skills/release-notes/SKILL.md, experiments/skill-fix.experiment.yaml" />
+
+<figure class="illustration">
+  ![Two identical glass test chambers on a lab bench, joined by a level balance beam: the left one shows three coral crosses, the right one three green checks. In front, the teal robot holds a revised instruction sheet with one line highlighted green, next to a wrench and a pencil.](../../../assets/labs/lab-4.jpg)
+  <figcaption>Change one thing, keep everything else equal, and prove that your change made the difference.</figcaption>
+</figure>
+
+You know the cause: the skill's first rule. Now you fix it, and then you prove that **your fix**, and nothing else, made the agent pass. That proof is a controlled experiment: the same eval runs twice, once with the original skill and once with yours, with every other setting identical.
+
+<EvalMap
+  doing="Fix the skill, then prove the fix with an experiment: the same eval, run with the old and the new skill."
+  testing="Your fix: does the fixed skill, and nothing else, make the agent pass?"
+  checking="The five code checks from Lab 3, unchanged, on both variants"
+  task={{ text: 'Write the release notes from <code>backlog.json</code>' }}
+  agent={{ text: 'GitHub Copilot, the same model in both variants' }}
+  environment={{ text: 'The skill: <code>before</code> vs <code>after</code>', state: 'changed' }}
+  trials={{ text: '3 per variant, 6 in all' }}
+  checks={{ text: 'Answer, transcript and workspace, as in Lab 3' }}
+  results={{ text: 'Experiment comparison, <code>report.md</code>, dashboard', state: 'new' }}
+/>
+
+## The pieces you'll work with
+
+<Pieces
+  items={[
+    { term: 'Baseline', def: 'The "before" you compare against: here, the original skill.', analogy: 'the control group', where: '<code>baseline: before</code>', isNew: true },
+    { term: 'Variant', def: 'A version of the eval with one deliberate change: here, your fixed skill.', analogy: 'the test group', where: '<code>variants:</code> <code>before</code> and <code>after</code>', isNew: true },
+    { term: 'Experiment file', def: 'Declares the comparison: which eval, which variants, and what may differ between them.', analogy: 'the protocol of a lab experiment', where: '<code>experiments/skill-fix.experiment.yaml</code>', isNew: true },
+    { term: '<code>vary</code>', def: 'The settings allowed to differ between variants. If anything else differs, Vally refuses to run, so the result can only come from the declared change.', analogy: 'the one variable you change on purpose', where: '<code>vary: [/environment/skills]</code>', isNew: true },
+    { term: 'Frozen copy', def: 'A copy of the original skill, so both versions exist side by side for one experiment.', analogy: 'a reference sample', where: '<code>skill-versions/before/release-notes/</code>', isNew: true },
+  ]}
+/>
+
+## Why this matters
+
+"I changed the skill and now it passes" isn't proof. The agent varies from run to run; the model behind it can change; you might have changed two things at once. A controlled experiment rules these out: same eval, same model, same settings, same number of trials, one declared difference.
+
+## Steps
+
+<Steps>
+
+1. Fix the skill. Open `.github/skills/release-notes/SKILL.md` and find its first rule:
+
+   ```markdown
+   - List every backlog item as a feature of this release, one bullet per item, formatted as `- ID: title`.
+   ```
+
+   Replace that whole line with these two lines:
+
+   ```markdown
+   - Include only items whose `status` is `done`. Leave every other item out and do not mention it anywhere in the notes.
+   - List each included item as one bullet formatted as `- ID: title`.
+   ```
+
+   Save the file. The other rules stay as they are.
+
+2. Optional: rerun the eval from Lab 3 to see the effect right away:
+
+   ```bash
+   vally eval -e evals/release-notes.eval.yaml
+   ```
+
+   In our runs, all three trials passed. But a rerun alone doesn't prove the fix made the difference; the experiment does.
+
+3. Read the experiment file:
+
+   ```yaml title="experiments/skill-fix.experiment.yaml"
+   name: release-notes-skill-fix
+   evals:
+     - ../evals/release-notes.eval.yaml
+   # The only setting allowed to differ between variants. Any other difference is an error,
+   # so a result can't come from a change you didn't mean to make.
+   vary: [/environment/skills]
+   baseline: before
+   variants:
+     before:
+       environment:
+         skills: ["../skill-versions/before/release-notes"]
+     after:
+       environment:
+         skills: ["../.github/skills/release-notes"]
+   ```
+
+   Both variants run the same eval. `before` loads the frozen copy of the original skill, `after` loads your fixed skill. Paths are relative to the experiment file.
+
+4. Check the plan without calling any model:
+
+   ```bash
+   vally experiment run experiments/skill-fix.experiment.yaml --dry-run
+   ```
+
+   ```text
+   Experiment: release-notes-skill-fix
+   Baseline:   before
+   Plans:      2
+
+   ── before (baseline) ──
+     Eval:        release-notes-completed-only
+     File:        ../evals/release-notes.eval.yaml
+     Model:       claude-sonnet-5.5
+     Config hash: 48df94cc2d6ebe75
+     Eval hash:   4c5c9c7166d5db5d
+
+   ── after ──
+     Eval:        release-notes-completed-only
+     File:        ../evals/release-notes.eval.yaml
+     Model:       claude-sonnet-5.5
+     Config hash: e032d16ce416ef24
+     Eval hash:   4c5c9c7166d5db5d
+   ```
+
+   The **eval hash** is identical, so both variants run exactly the same eval. The **config hash** differs, because the skills differ. If you haven't changed the eval file or the model, your hashes most likely match ours: they're computed from the settings. What matters is same and different.
+
+5. Run the experiment. It runs three trials per variant, six in all:
+
+   ```bash
+   vally experiment run experiments/skill-fix.experiment.yaml
+   ```
+
+   ```text
+   Loaded 2 stimuli from release-notes-completed-only · 5 workers
+
+   release-notes-completed-only
+
+   before
+     FAIL  completed-work-only  0/3
+      ✘ leaves-out-unfinished-export  0 passed · 3 failed · 'CT-102' found in output  trials 1–3
+      · score 80.0% < threshold 100.0% · trials 1–3
+
+   ────────────────────────────────────────────────────────
+
+   Experiment  release-notes-skill-fix   varying /environment/skills · baseline before
+
+     → after beat baseline — 1/1 vs 0/1 stimuli.
+       after used ±0% tokens, −8% trial time.
+
+     eval                          before (baseline)         after                      Δ
+     release-notes-completed-only  ✘ 0/1 (score 80% < 100%)  ✓ 1/1 (score 100% ≥ 100%)  +1
+     ────────────────────────────  ────────────────────────  ─────────────────────────  ───
+     stimuli                       0/1                       1/1                        +1
+     tokens                        186.9k                    186.3k                     ±0%
+     trial time                    29.5s                     27.1s                      −8%
+
+   Run ID: 7c9e327c-d094-46fc-99ae-017940e17ef8
+   Output: /workspaces/agent-evals-workshop-starter/vally-experiment-results/2026-11-19T11-11-29-203Z
+   ```
+
+   Vally lists the failures per variant first: only `before` failed. Then the comparison: `after` passed where `before` failed, with the same tokens and slightly less time.
+
+6. Read the details. An experiment saves its runs in its own folder, `vally-experiment-results/<date-and-time>/`, with one subfolder per variant: `before/` and `after/`, each with the `results.jsonl` and trial folders you know.
+
+   In the Explorer, right-click `report.md` in the newest experiment folder and select **Open Preview**: it has one table per variant. In ours, `before` passed 0 of 3 trials with pass@k and pass^k at 0%, and `after` passed 3 of 3 with both at 100%.
+
+   Read the answers per variant with the shortcut from Lab 3; it picks the newest run, here the experiment:
+
+   ```bash
+   ./scripts/answers.sh
+   ```
+
+   ```text
+   ════ release-notes-completed-only › completed-work-only · variant after · trial 1 · claude-sonnet-5.5 · PASS (score 100%)
+   …
+   ════ release-notes-completed-only › completed-work-only · variant before · trial 1 · claude-sonnet-5.5 · FAIL (score 80%)
+   ```
+
+   Do the `after` answers still contain a summary sentence and both done items? A fix that passes the checks but breaks something the checks don't look at is no fix.
+
+7. Compare the variants in the dashboard. It shows one results folder at a time, so point it at the experiment: in the dashboard's terminal, press Ctrl+C, then run:
+
+   ```bash
+   EXP=$(ls -d vally-experiment-results/*/ | tail -1)
+   vally serve "$EXP" --port 3200 --allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+   ```
+
+   Reload the page. The two variants appear as two runs, named after the experiment's run ID with `::before` and `::after`. Scroll down to **Model comparison**, tick both, and select **Compare Selected**:
+
+   ![The dashboard's Model comparison for the experiment. Pass rate: before 0%, after 100%. Average duration: 7.7 seconds before, 6.6 seconds after. The table below compares, per variant: pass 0% vs 100%, duration 7.7s vs 6.6s (minus 14%), 3 turns and 2 tool calls in both, 61.9k input tokens in both, and 423 vs 186 output tokens (minus 56%).](../../../assets/screens/lab-4-compare.jpg)
+
+   Blue is `before`, green is `after`: both column headers show the same shortened run ID. The pass rate went from 0% to 100%, while turns, tool calls and input tokens stayed the same: the agent did the same work, with a different result. In Lab 5, start the dashboard on `vally-results` again, with the command from Lab 0.
+
+</Steps>
+
+## What just happened
+
+You proved the fix:
+
+- **Same eval, same model, same settings**: the dry run showed identical eval hashes and the same model.
+- **One declared difference**: the skill, the only path in `vary`.
+- **A clear result**: 0 of 3 trials passed before, 3 of 3 after. Every check passed after the fix, including the CT-102 check.
+- **No hidden cost**: tokens stayed the same, and trials got slightly faster.
+
+The fixed skill's answers look like this one:
+
+```text
+This release makes it easier to find things and gives the dashboard a darker look.
+
+- CT-101: Search across all projects
+- CT-103: Dark mode for the dashboard
+```
+
+## Check yourself
+
+<details>
+<summary>Why keep a frozen copy of the old skill instead of using Git history?</summary>
+
+One experiment run needs both versions at the same time, at two different paths. Git history holds the old version, but not as a folder Vally can load next to the new one.
+
+</details>
+
+<details>
+<summary>What would Vally do if the after variant also changed the model?</summary>
+
+Refuse to run. The model isn't in `vary`, so a different model would be an undeclared difference. Vally reports it as an error when it plans the experiment, so you can't accidentally credit the skill for a model change.
+
+</details>
+
+<details>
+<summary>0 of 3 before, 3 of 3 after. Is the fix proven for good?</summary>
+
+It's strong evidence for this task and this model, from six trials. It's not proof for every request a user might type, and not for future models. That's why you'll keep running the eval on every change, in CI, in Lab 7.
+
+</details>
+
+## Stuck?
+
+- **Behind?** `scripts/catch-up.sh 4` puts the fixed skill in place.
+- **A trial shows `ERROR` with `Session disconnected while waiting for a response`**, or another connection problem: the trial didn't finish. It counts neither as a pass nor as a fail, and it skews the comparison of tokens and time, because that variant has fewer finished trials. Run the experiment again. `./scripts/answers.sh` shows such a trial as `ERROR`, with the message.
+- **A variant fails with an error that names a path or says `not found`:** a skill path is wrong. Paths in the experiment file are relative to the `experiments/` folder.
+- **Your `after` variant still fails:** check your edit against `solutions/lab-4/SKILL.md`, and read the failing answer with `scripts/answers.sh`.
+
+## Go further
+
+`vally compare` goes beyond pass rates: an LLM judge compares the before and after answers pair by pair and estimates which variant is better, with a confidence interval. Add `--compare` to the experiment command to run it right after the trials. It spends tokens on the LLM judge; you choose the judge's model with `--judge-model`. See [vally compare](https://microsoft.github.io/vally/reference/cli/compare/) in the Vally docs.
+
+**Next:** [Lab 5: Add an LLM judge](../lab-5-llm-judge/)

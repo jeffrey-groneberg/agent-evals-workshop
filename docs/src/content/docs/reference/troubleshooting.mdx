@@ -1,0 +1,103 @@
+---
+title: Troubleshooting
+description: Fixes for the problems you're most likely to meet in the workshop, from sign-in and models to lint errors, judge errors and CI.
+---
+
+Find your error message or symptom below. Still stuck? At a workshop, ask a facilitator. Otherwise, open an issue in [this site's repository](https://github.com/jeffrey-groneberg/agent-evals-workshop/issues).
+
+## Setup
+
+| Symptom | Fix |
+| --- | --- |
+| `vally: command not found` | Run `npm install -g @microsoft/vally-cli@0.21.0`. In a Codespace, if setup failed, rerun `bash .devcontainer/post-create.sh`. |
+| `npm install -g` fails with `ENOTCONN`, `ETIMEDOUT` or a proxy error | Your network may require a registry mirror or a proxy. Ask your organization which npm registry to use, and pass it with `npm install -g --registry <url> @microsoft/vally-cli@0.21.0 @github/copilot`. In mainland China, many developers use a public mirror such as `https://registry.npmmirror.com`. |
+| `Node.js … is too old` | Install Node.js 24. Vally needs 22.15 or later; GitHub Copilot Evals needs 24. |
+| `check-setup.sh` says a secret isn't set, but you added it | A running Codespace picks up new secrets only after a restart: Command Palette > **Codespaces: Stop Current Codespace**, then open it again. |
+| `Permission denied` running a script | Run `chmod +x scripts/*.sh`, or start it with `bash scripts/<name>.sh`. |
+| On Windows, scripts don't run | Use WSL or a Codespace. The scripts are Bash. |
+
+## Signing in to Copilot
+
+| Symptom | Fix |
+| --- | --- |
+| `Not authenticated` or another sign-in error when a trial starts | In a Codespace, open a new terminal and run again: Codespace terminals have `GITHUB_TOKEN`. On your computer, run `gh auth login`, then load `.env` again: `set -a; source .env; set +a`. Still failing? Give Vally a fine-grained token with only the **Copilot Requests** permission: see [If Lab 0 can't sign in](../../start/codespaces/#if-lab-0-cant-sign-in). |
+| `no oauth token found for github.com` when you load `.env` | The GitHub CLI isn't signed in. Run `gh auth login`, then load `.env` again. |
+| `check-setup.sh` says `No sign-in found` | On your computer, create `.env` (`cp .env.example .env`) and load it in this terminal: `set -a; source .env; set +a`. In a Codespace, open a new terminal. |
+| `COPILOT_GITHUB_TOKEN is a classic token (ghp_)` | Copilot doesn't accept classic tokens. If the GitHub CLI was signed in with one, run `gh auth login` again and choose **Login with a web browser**. Or use a fine-grained token. |
+| You signed in with `copilot login`, but Vally still can't sign in | Vally reuses that sign-in only with `EVALUATE_USE_HOST_COPILOT_HOME=1`. See [Sign in with Copilot CLI instead](../../start/local/#sign-in-with-copilot-cli-instead). |
+| `check-setup.sh` warns that `EVALUATE_USE_HOST_COPILOT_HOME=1` is also set | Comment the line out again in `.env`, open a new terminal and load `.env` there, so the token's clean, isolated runs apply. If you added the line to `~/.bashrc`, remove it there too. |
+| Your organization doesn't allow Copilot CLI | Ask your administrator, or use a personal account with a Copilot plan. |
+
+## Models
+
+| Symptom | Fix |
+| --- | --- |
+| The model `claude-sonnet-5.5` isn't available | Start `copilot`, type `/model`, choose a model you have, and run `./scripts/use-model.sh <id>` once: it switches every eval file. |
+| Copilot CLI says an administrator manages the model | Your organization picks the model for Copilot CLI conversations. Vally's runs use the model in the eval file or `--model`, if your plan allows it. |
+| Your results differ from the ones on these pages | Expected: agents vary from run to run. Compare patterns (which checks fail, and why), not the exact wording. Differences that do change the measurement: another model, `EVALUATE_USE_HOST_COPILOT_HOME=1`, or a skill you already edited. |
+
+## Eval files and lint
+
+| Message | Fix |
+| --- | --- |
+| `duplicate-grader-name` | Every grader name must be unique in the file. Add a prefix per stimulus. |
+| `undefined-param` | A `${KEY}` placeholder has no value. Pass `--param KEY=value`, or give it a default: `${KEY=value}`. |
+| `environment-file-not-found` | A path in `agent_environment` is wrong. Paths are relative to the eval file, so a file in `evals/` uses `../backlog.json`. |
+| A YAML error after an edit | Check indentation: list items under `graders:` must all start in the same column. |
+| `regression-without-baseline` (a warning) | `type: regression` expects a baseline configuration. Keep `type: capability` unless you configure one. |
+
+## Runs
+
+| Symptom | Fix |
+| --- | --- |
+| A trial times out | Run again, or raise `timeout` in the eval. Judged trials take longer: about two minutes in our runs. |
+| A trial shows `ERROR`, for example `Session disconnected while waiting for a response` | The trial didn't finish, often because of a temporary connection problem. Vally counts it as an error, not as a pass or a fail, so it also skews token and time comparisons. Run again. |
+| `release-notes-skill-used` fails | Check whether you use `EVALUATE_USE_HOST_COPILOT_HOME=1` with many personal skills installed: the agent may read the skill's file instead of invoking it. Use a token instead. See [Lab 3](../../labs/lab-3-run-the-agent/#why-a-clean-environment-matters). |
+| An experiment variant shows an error and no score | A skill path in the experiment file is wrong. Paths are relative to `experiments/`. |
+| The dashboard doesn't open in a Codespace | Start it with `--allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"`, then open port 3200 from the **Ports** panel. |
+
+## The LLM judge
+
+| Symptom | Fix |
+| --- | --- |
+| The judge model `gpt-5.6-luna` isn't available on your plan | Start `copilot` and type `/model` to see your models. Pick one, ideally from another model family than the agent's, and run with `--param JUDGE_MODEL=<model-id>`. |
+| Every judge grade shows `Grading error; verdict is invalid` | The judge couldn't answer, so Vally refused to count the grade. Check your Copilot sign-in with `./scripts/check-setup.sh`, and check that the judge model is on your plan. Then rerun. With your own endpoint, see the next section. |
+| `LLM judge failed: Model "…" is not available in Copilot` | The eval names a judge model your plan doesn't have, or names none, so Vally uses its own default judge model. Set `judge_model` in the eval file's `defaults` to a model from `/model`, such as `gpt-5.6-luna`. Drafts from GitHub Copilot Evals may leave it out. |
+
+## Your own model endpoint
+
+These apply only if you run the judge on your own endpoint; see [Model access and costs](../../start/model-access/#your-own-model-endpoint-optional).
+
+| Symptom | Fix |
+| --- | --- |
+| An error that names `set-your-endpoint.invalid` | You ran without `--param JUDGE_BASE_URL="$LLM_BASE_URL"`, or `LLM_BASE_URL` is empty in this terminal. |
+| `LLM_BASE_URL still holds an example value` | Put your real endpoint into the Codespaces secret or your `.env` file. |
+| `check-setup.sh` says that one of the `LLM_` variables isn't set | You set only some of the three. Set all three to use your own endpoint, or none to run the judge on your Copilot plan. |
+| `LLM judge failed: 401` or `403` | The endpoint rejected the key: it's wrong or has expired. Check `LLM_API_KEY`. |
+| `LLM judge failed: 404` | Check that `LLM_BASE_URL` ends in `/openai/v1/`, that `LLM_MODEL` is the deployment name, and that you passed it with `--param JUDGE_MODEL="$LLM_MODEL"`. |
+| `LLM judge failed: 429` | The endpoint is busy or over its quota. Wait a minute, then run again. |
+| `LLM judge failed: 400` | The endpoint rejected the request. The deployment must be a GPT-5-family reasoning model that supports the Responses API. |
+| You want to judge on Copilot again | Delete the `judge_provider` block from the eval file, and run without the `--param` options. |
+
+## GitHub Copilot Evals
+
+| Symptom | Fix |
+| --- | --- |
+| `copilot plugin` isn't recognized | Update Copilot CLI: `npm install -g @github/copilot`. |
+| Copilot doesn't use the Evals skills | Start a fresh conversation, and check `copilot plugin list --json`. |
+| `/eval` commands are missing | They need experimental mode: `/experimental`, then a fresh conversation. Plain-language requests work without it. |
+| A run fails with `GitHub CLI sign-in is unavailable for github.com` | Copilot Evals runs use the GitHub CLI's stored sign-in, and Copilot CLI hides token variables from plugins. In a Codespace, run `echo "$GITHUB_TOKEN" \| env -u GITHUB_TOKEN gh auth login --with-token`; on your computer, `gh auth login`. Then ask Copilot to run again. See [Lab 6, step 2](../../labs/lab-6-copilot-evals/). |
+| A run fails with `SDK protocol version mismatch: SDK supports versions 3-3, but server reports version 4` | The runner uses your Copilot CLI, which is newer than the Copilot runtime in Vally 0.21.0. Ask Copilot: `Set up the eval runner for this project with Node and Vally only, without a Copilot executable path.` Then run again. |
+| `MCP error -32001: Request timed out` after you approved a tool | The plugin's own review waited about three minutes for an answer. Ask Copilot to try again, and answer the review when it appears. |
+| The dashboard says `No runs found` for a run that Copilot started | Copilot Evals doesn't write `results.jsonl`. Open `eval-results.md` in `vally-results/eval-run-<id>/<date-and-time>/`, or run the file with `vally eval -e <file>`. |
+| Copilot Evals won't save or validate a draft: `Symbolic links/junctions are not inspected` | The repository's path, or your home folder's, goes through a symbolic link; on macOS, `/tmp` is one. Clone the repository into a normal folder, such as one in your home folder, and start Copilot there. |
+| More | The GitHub Copilot Evals [support page](https://github.github.io/evals/support/). |
+
+## CI (Lab 7)
+
+| Symptom | Fix |
+| --- | --- |
+| The workflow doesn't start | The pull request must change a file under one of the workflow's `paths`, and Actions must be enabled. |
+| The job fails in the lint step | An eval in `evals/` has a lint error. Run `vally lint -e evals --strict` locally. |
+| `gh: command not found` (on your computer) | Install the GitHub CLI and run `gh auth login`. |
+| Copilot isn't allowed in Actions | In an organization's repository, an owner must allow Copilot CLI billed to the organization. |

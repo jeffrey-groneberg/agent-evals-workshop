@@ -1,0 +1,81 @@
+---
+title: 智能体评估工作坊
+description: 面向开发者的动手实践工作坊。了解什么是评估（eval），用 Vally 为 AI 智能体编写并运行评估，然后让 GitHub Copilot Evals 帮你创建、审查、运行和比较评估。
+template: splash
+editUrl: false
+hero:
+  tagline: 从“什么是评估？”到 GitHub Copilot Evals。学习基础知识，量化一个真实的智能体 bug，证明修复有效，再让 Copilot 帮你完成下一个评估。
+  image:
+    file: ../../../assets/hero.jpg
+    alt: 一个青绿色的小机器人（也就是被测的 AI 智能体）举着一份发布说明，其中一行标成了红色。它站在一台笔记本电脑前，电脑终端显示两个通过的结果和一个失败的结果，旁边放着一张清单。
+  actions:
+    - text: 开始工作坊
+      link: start/overview/
+      icon: right-arrow
+    - text: 在 Codespace 中打开
+      link: start/codespaces/
+      icon: rocket
+      variant: minimal
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import Flow from '../../../components/Flow.astro';
+
+## 你将学到什么
+
+<CardGrid>
+  <Card title="讲清基础知识" icon="open-book">
+    什么是评估（eval）、AI 智能体为什么需要评估，以及每个评估都具备的组成部分：任务、智能体、环境、试验、运行记录（transcript）、评分器和分数。
+  </Card>
+  <Card title="免费检查你的检查项" icon="approve-check">
+    借助 Vally 的模拟执行器（mock），在花费任何一个 token 之前，先证明你的检查项能发现错误答案。
+  </Card>
+  <Card title="量化一个真实的 bug" icon="magnifier">
+    把 GitHub Copilot 作为被测智能体来运行，每次进行 3 次试验，并阅读运行记录，弄清它为什么失败。
+  </Card>
+  <Card title="证明修复有效" icon="random">
+    修复智能体的技能（skill），再用受控实验证明修复有效：同一个评估、同一个模型，只改动一处。
+  </Card>
+  <Card title="添加 LLM 评审" icon="star">
+    编写评分标准（rubric）并校准 LLM 评审，让它评判字符串检查项看不出来的质量。它在 Copilot 上运行；你也可以选择使用自己的模型终结点。
+  </Card>
+  <Card title="GitHub Copilot Evals" icon="github">
+    让 Copilot 审查、创建、运行和比较评估，并用你学到的知识评判它起草的内容。
+  </Card>
+</CardGrid>
+
+## 工作坊流程
+
+<Flow
+  label="工作坊路线"
+  steps={[
+    { label: '基础知识', detail: '什么是评估，以及它由哪些部分组成', tone: 'input' },
+    { label: '手动使用 Vally', detail: '在 YAML 和终端中编写、运行和阅读评估', tone: 'agent' },
+    { label: 'LLM 评审', detail: '一份评分标准，以及应用它的第二个模型', tone: 'grader' },
+    { label: 'GitHub Copilot Evals', detail: 'Copilot 帮你创建、审查、运行和比较评估', tone: 'result' },
+  ]}
+/>
+
+整个工作坊都围绕同一个真实的小例子展开：一个根据待办事项列表起草发布说明的**发布说明技能**。它有一个 bug：会把尚未完成的工作也公布出来。你将发现这个 bug，衡量它，修复它，并证明修复有效。引导部分大约需要 2 小时；自定进度练习（CI、比较模型、你自己的智能体）可以回家后再完成。
+
+## 选择起点
+
+<CardGrid>
+  <LinkCard title="工作坊概览" description="日程安排、准备事项，以及每个练习如何进行。" href="start/overview/" />
+  <LinkCard title="在 Codespace 中搭建环境" description="推荐：无需安装任何东西，几分钟即可就绪。" href="start/codespaces/" />
+  <LinkCard title="在你的计算机上搭建环境" description="Node.js 24、Git、jq 和两个 npm 包。" href="start/local/" />
+  <LinkCard title="先阅读核心概念" description="8 个简短的页面，从“什么是评估？”到术语表。" href="concepts/what-is-an-eval/" />
+  <LinkCard title="起始存储库" description="练习中要用到的文件，已为 Codespace 准备就绪。" href="https://github.com/jeffrey-groneberg/agent-evals-workshop-starter" />
+</CardGrid>
+
+## 关于作者
+
+<div class="author-card">
+  <div>
+    <p class="author-name">Jeffrey Groneberg</p>
+    <p>Microsoft 德国的高级解决方案工程师。我创建这个工作坊，是为了帮助开发者衡量自己的 AI 智能体，而不是靠猜。<a href="https://www.linkedin.com/in/jeffrey-groneberg-84b47412" rel="author noopener" target="_blank">在 LinkedIn 上与我联系</a>。</p>
+    <p>这是一个社区工作坊，不是 Microsoft 或 GitHub 的官方文档。关于这些工具，请以 Vally 和 GitHub Copilot Evals 的文档为准。</p>
+  </div>
+</div>
+
+本工作坊也提供英文版：[English](../)。

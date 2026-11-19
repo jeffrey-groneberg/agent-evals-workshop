@@ -1,0 +1,66 @@
+---
+title: Vally 和 GitHub Copilot Evals
+description: Vally 能做什么，GitHub Copilot Evals 在此基础上增加了什么，两者如何共用同一套文件，以及何时该用哪一个。
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+
+<figure class="illustration">
+  ![一个深色终端窗口立在一个装满齿轮的盒子（评估引擎）上，一根青绿色线缆把它连到一个带闪光图标的聊天助手面板；两者之间放着一份共享的文档文件。](../../../../assets/tools.jpg)
+  <figcaption>Vally 是引擎；GitHub Copilot Evals 是与它配合工作的助手，两者使用同一套文件。</figcaption>
+</figure>
+
+本工作坊使用两个协同工作的工具。**Vally** 是运行评估（eval）的引擎。**GitHub Copilot Evals** 是构建在它之上的助手：Copilot 帮你创建、审查、改进、运行和比较评估，而每一次运行仍然在 Vally 中进行。
+
+## Vally：引擎
+
+[Vally](https://microsoft.github.io/vally/) 是 Microsoft 的 AI 评估平台，以 `@microsoft/vally-cli` 的名称发布在 npm 上。你在 YAML 文件中描述评估，然后通过命令行运行它们。
+
+| 命令 | 作用 | 练习 |
+| --- | --- | --- |
+| `vally lint` | 检查评估文件中的错误，不运行任何内容 | 2 |
+| `vally eval` | 运行评估：试验、评分器、结果 | 0、2、3、5 |
+| `vally experiment run` | 对多个变体进行受控比较 | 4、8 |
+| `vally serve` | 在浏览器中打开结果仪表板 | 3 |
+| `vally grade` | 重新为已保存的运行记录评分，无需重新运行智能体 | 参考 |
+| `vally compare` | 借助 LLM 评审逐对比较两次运行 | 4（更进一步） |
+
+Vally 通过**执行器**运行智能体。默认执行器 `copilot-sdk` 运行 GitHub Copilot；`mock` 不运行任何模型，用于测试检查项。LLM 评审运行在 `judge_model` 指定的模型上：默认是一个 Copilot 模型；如果配置了 `judge_provider` 块，则是你自己终结点上的模型。结果保存在 `vally-results/` 中：Markdown 格式供人阅读，JSONL 格式供工具使用。
+
+## GitHub Copilot Evals：助手
+
+[GitHub Copilot Evals](https://github.github.io/evals/) 目前处于预览阶段。它为 Copilot 增加了六个技能（skill），你可以用自然语言来使用它们：
+
+| 技能 | 例如，你可以这样问 |
+| --- | --- |
+| **create** | “为 release-notes 技能创建一个评估。” |
+| **review** | “审查这个评估及其已保存的结果。” |
+| **improve** | “为这个评估添加一个失败用例，并保存一份修订后的副本。” |
+| **run** | “运行这个评估。” |
+| **compare** | “比较这两次已保存的运行。” |
+| **setup** | “为这个项目设置评估路径和测试套件。” |
+
+它可以在多个应用中使用：Copilot CLI（作为插件）、VS Code（带有可视化 Canvas 的扩展）、Visual Studio 和 GitHub Copilot App。在本工作坊中，你使用的是 Copilot CLI 插件，因为它可以在 Codespace 中运行。
+
+### 一切由你掌控
+
+- **保存不等于运行**。Copilot 在保存文件之前会先向你展示完整内容；每次运行都需要你单独批准，而且会先显示它使用的模型、工具和限制。安装或打开 Evals 都不会启动任何运行。
+- **读取和比较是免费的**。验证文件、读取已保存的结果以及比较已保存的运行都不会调用模型。但让 Copilot 起草或审查评估，确实会计入你的 Copilot 计划用量。
+- **两种运行器**。Copilot 把每次运行都交给 Vally。小型评估，即每个任务 1 次试验、最多 10 个任务、每个任务最多 10 个检查项，并且不使用 LLM 评审、设置命令或命令检查的评估，在**受限运行器**上运行：它会增加全新的主目录、一套工具策略和一份很短的允许程序列表，因此 Copilot 替你启动的运行始终规模小、可预期。不过，它并不是沙盒，费用也没有上限。需要更多能力的评估，例如多次试验或评审，在 Vally 的**完整引擎**上运行（最多 100 次试验、支持评审，时间限制最长可达一天）。它没有工具策略，也没有沙盒，因此会要求一次单独的、更详细的批准。使用哪种运行器由评估文件决定；[练习 6](../../labs/lab-6-copilot-evals/#copilot-如何运行评估) 会展示这两种运行器。
+
+## 同一套文件，两种入口
+
+两个工具读取的是同一套文件：项目根目录下的 `.vally.yaml`，以及它指向的 `*.eval.yaml` 文件。你手写的评估，Copilot 可以审查；Copilot 起草的评估，你可以用 `vally eval` 运行。这就是本工作坊从 Vally 开始的原因：一旦你了解了评估文件的各个组成部分，就能评判 Copilot 起草的内容。
+
+## 何时用哪个
+
+| 适合直接使用 Vally 的情况 | 适合使用 GitHub Copilot Evals 的情况 |
+| --- | --- |
+| 完全掌控每一项设置 | 根据自然语言描述生成初稿 |
+| 大量试验，以及在 Copilot 或你自己的终结点上运行的 LLM 评审 | 通过审查找出现有评估中的不足 |
+| 改变模型或技能的实验 | 引导式运行，在你批准之前先显示费用和影响 |
+| 脚本和自动化 | 无需编写命令即可比较已保存的运行 |
+
+到了 CI 中，两者殊途同归：[GitHub Action `github/evals-action`](https://github.com/github/evals-action) 会在拉取请求上运行你的 Vally 评估。你将在[练习 7](../../labs/lab-7-ci/) 中设置它。
+
+<LinkCard title="术语表" description="工作坊中的所有术语，集中在一处。" href="../glossary/" />

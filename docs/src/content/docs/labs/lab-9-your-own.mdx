@@ -1,0 +1,77 @@
+---
+title: 'Lab 9: Your own agent'
+description: Apply the whole loop to a skill, set of instructions or MCP tool you build yourself, from defining good to running it in CI.
+sidebar:
+  label: '9. Your own agent'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../components/LabMeta.astro';
+import EvalMap from '../../../components/EvalMap.astro';
+
+<LabMeta time="45 minutes or more, self-paced" cost="Your choice" uses="lab-files/lab-9/my-first.eval.yaml" />
+
+<figure class="illustration">
+  ![A drafting table with a large eval template: empty checkboxes and lines, the first one being checked with a pen. Around it lie eval building blocks: cards, a magnifying glass, a checklist, a small glass workspace box and the peach judge robot. A small robot waits on a pedestal to be tested.](../../../assets/labs/lab-9.jpg)
+  <figcaption>The same loop, applied to an agent of your own.</figcaption>
+</figure>
+
+The release-notes skill was practice. Now apply the same loop to something you build: a skill your team uses, your agent's custom instructions, or an MCP tool.
+
+<EvalMap
+  doing="Apply the whole loop to an agent or skill of your own, from defining good to guarding it in CI."
+  testing="Your own agent, skill, custom instructions or tool"
+  checking="Your checks: code checks first, a calibrated judge only where needed"
+  task={{ text: 'A task your agent really gets', state: 'new' }}
+  agent={{ text: 'Your agent', state: 'new' }}
+  environment={{ text: 'Your skill and files', state: 'new' }}
+  trials={{ text: '3 or more' }}
+  checks={{ text: 'Yours: answer, transcript, workspace', state: 'new' }}
+  judge={{ text: 'Optional, calibrated first' }}
+  results={{ text: 'The same files and dashboard' }}
+/>
+
+## Choose a good first target
+
+Pick something that's **used often**, **small**, and **has failed before** in a way you remember. A good first task has a clear right answer that two colleagues would agree on. Avoid tasks where "good" is mostly taste; add those once you have a calibrated judge.
+
+## The loop, one more time
+
+<Steps>
+
+1. **Define good** (Lab 1). Write down four to six criteria before you run anything, including at least one must-not. Mark which ones code can check.
+
+2. **Draft the eval.** Start from the template, or ask Copilot to draft it (Lab 6) and review the draft against your criteria:
+
+   ```bash
+   cp lab-files/lab-9/my-first.eval.yaml evals/
+   ```
+
+   Replace every `TODO`: the skill's folder, the files it needs, a realistic prompt, and checks for your criteria.
+
+3. **Check your checks** (Lab 2). Make a copy with `executor: mock`, put a known-good answer and a known-bad answer into the prompts, and confirm the verdicts. Keep only the checks on the answer in that copy: a mock run makes no tool calls and changes no files, so checks on the transcript, such as `skill-invocation`, can't pass there.
+
+4. **Run trials** (Lab 3): `vally lint -e evals/my-first.eval.yaml --strict`, then `vally eval -e evals/my-first.eval.yaml`. Read the transcripts, not only the pass rate.
+
+5. **Fix and prove** (Lab 4). Change one thing, and compare with an experiment.
+
+6. **Judge what code can't** (Lab 5). Add a rubric and a judge only for the criteria that need judgment, and calibrate it first.
+
+7. **Guard it** (Lab 7). Tag the eval `lane: ci` and let every pull request run it.
+
+</Steps>
+
+## Tips from the workshop
+
+- **Don't name the skill or the answer in the prompt.** Write the request a real user would type.
+- **Add a negative check for every bug you've seen.** Bugs tend to be something extra.
+- **Check the transcript and the workspace** where it matters, not only the answer.
+- **Keep runs isolated.** Sign in with a token, not with `EVALUATE_USE_HOST_COPILOT_HOME=1`, so your own skills and settings don't leak into the run.
+- **Start with three trials;** use more before you decide anything that matters.
+- **Turn every real failure into a new task or control.** Your eval gets better with every bug it catches.
+
+## Further reading
+
+- [Writing eval specs](https://microsoft.github.io/vally/guides/writing-eval-specs/) in the Vally docs.
+- [Run your first eval](https://github.github.io/evals/journeys/first-eval/) in the GitHub Copilot Evals docs.
+- More labs and worked examples in [Further learning and sources](../../reference/further-learning/).

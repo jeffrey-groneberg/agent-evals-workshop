@@ -1,0 +1,299 @@
+---
+title: 'Lab 5: Add an LLM judge'
+description: Write a rubric, calibrate an LLM judge on known answers, tighten the rubric, add the judge to the real eval, and read its verdicts and reasoning.
+sidebar:
+  label: '5. Add an LLM judge'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../components/LabMeta.astro';
+import EvalMap from '../../../components/EvalMap.astro';
+import Pieces from '../../../components/Pieces.astro';
+import Flow from '../../../components/Flow.astro';
+
+<LabMeta time="20 minutes" cost="3 Copilot runs and about 11 judge calls, on your Copilot plan" uses="evals/judge-controls.eval.yaml, evals/release-notes-judged.eval.yaml" />
+
+<figure class="illustration">
+  ![The peach robot, the LLM judge, reviews answer cards at a desk with a rubric clipboard, next to a magnifying-glass station for the code checks. Each card carries the judge's badge and the code check's badge: two pairs agree, two disagree. The teal robot waits with more cards.](../../../assets/labs/lab-5.jpg)
+  <figcaption>A second model judges what code can't check, once you've calibrated it on answers you know.</figcaption>
+</figure>
+
+Two of your criteria from Lab 1 can't be checked with a string: "starts with one short sentence that summarizes the release" and "is friendly and short". For those you add an **LLM judge**: a second model that reads each answer and decides against a written rubric. Like your checks in Lab 2, you test the judge on known answers before you trust it.
+
+<EvalMap
+  doing="Write a rubric, calibrate an LLM judge on known answers, tighten the rubric, and add the judge to the real eval."
+  testing="First the judge, with known answers; then the agent, with the calibrated judge"
+  checking="Code checks for the facts, an LLM judge with a rubric for the qualities"
+  task={{ text: 'Known answers first, then the real task' }}
+  agent={{ text: 'Mock for calibration, then GitHub Copilot', state: 'changed' }}
+  environment={{ text: 'The fixed skill and <code>backlog.json</code>' }}
+  trials={{ text: '1 per known answer; 3 in the real eval' }}
+  checks={{ text: 'The code checks, as before' }}
+  judge={{ text: '<code>gpt-5.6-luna</code> on Copilot, with your rubric', state: 'new' }}
+  results={{ text: 'The judge\'s verdict and reasoning per answer', state: 'new' }}
+/>
+
+## The pieces you'll work with
+
+<Pieces
+  items={[
+    { term: 'LLM judge', def: 'A grader that sends the answer, plus your rubric, to a second model and gets back a verdict with its reasoning.', analogy: 'a reviewer with a checklist', where: 'a grader with <code>type: prompt</code>', isNew: true },
+    { term: 'Rubric', def: 'The judge\'s criteria, one per line. It\'s the specification for the judge: what isn\'t in it, the judge decides on its own.', analogy: 'the reviewer\'s checklist', where: '<code>rubric:</code> under a stimulus', isNew: true },
+    { term: 'Judge model', def: 'The model that judges. Here, <code>gpt-5.6-luna</code> from GitHub Copilot: a different model family from the agent\'s Claude model, which makes it more independent. It runs on your Copilot plan, with your sign-in.', analogy: 'a second opinion from another doctor', where: '<code>judge_model</code> under <code>defaults</code>', isNew: true },
+    { term: 'Param', def: 'A placeholder in the YAML with a default, such as <code>${JUDGE_MODEL=gpt-5.6-luna}</code>. You change it for one run with <code>--param</code>, without editing the file.', analogy: 'a function argument with a default value', where: '<code>--param JUDGE_MODEL=&lt;model-id&gt;</code>', isNew: true },
+    { term: 'Binary scoring', def: 'The judge answers pass or fail instead of a score from 1 to 5. Easier to check against your own judgment.', analogy: 'a yes/no exam question', where: '<code>config: { scoring: binary }</code>', isNew: true },
+    { term: 'Calibration', def: 'Checking the judge on answers whose verdict you know, and fixing the rubric until it agrees with you. The mock executor supplies the known answers.', analogy: 'zeroing a scale before weighing', where: '<code>evals/judge-controls.eval.yaml</code>', isNew: true },
+    { term: 'Judge provider (optional)', def: 'Where the judge\'s requests go if you bring your own model endpoint and key. Without it, the judge runs on GitHub Copilot.', analogy: 'the reviewer\'s address', where: '<code>judge_provider</code> under <code>defaults</code>; see the end of this lab', isNew: false },
+  ]}
+/>
+
+## Why this matters
+
+A judge is a grader, and graders can be wrong. A judge is wrong in less predictable ways than a string check: it can be lenient, follow its own idea of "good", or decide an unclear case differently each time. So you treat it like your checks in Lab 2: known answers first, with the **mock executor**, so that only the judge is being tested and only the judge costs tokens.
+
+<Flow
+  label="Calibrating the judge"
+  steps={[
+    { label: 'Known answer', detail: 'Mock executor: no agent runs', tone: 'input' },
+    { label: 'Code check', detail: 'Is CT-102 absent?', tone: 'grader' },
+    { label: 'LLM judge', detail: 'Applies the rubric: a Copilot model', tone: 'grader' },
+    { label: 'Compare', detail: 'Do they agree with you, and with each other?', tone: 'result' },
+  ]}
+/>
+
+## Before you start
+
+There's nothing to set up: the judge runs on GitHub Copilot, with the same sign-in as the agent. The eval files use `gpt-5.6-luna` as the judge. If that model isn't on your plan, see [Stuck?](#stuck). If you'd rather run the judge on your own model endpoint, for example an Azure OpenAI deployment, do the lab as written first, then follow [Use your own endpoint](#use-your-own-endpoint) at the end.
+
+## Steps
+
+<Steps>
+
+1. Copy the judge controls into `evals/`:
+
+   ```bash
+   cp lab-files/lab-5/judge-controls.eval.yaml evals/
+   ```
+
+   Open `evals/judge-controls.eval.yaml` and find these parts:
+
+   - `executor: mock`: the four answers are known answers again: shortened versions of answers C, A, B and D from Lab 1. Answer B keeps its note about CT-102 but drops its offer to add CT-102 back.
+   - `judge_model: ${JUDGE_MODEL=gpt-5.6-luna}` under `defaults`: the judge, as a param with a default.
+   - `rubric: &rubric`: four criteria, defined once and reused for every answer with `*rubric`. Read the second line carefully: "Saying that CT-102 is unfinished or was left out is acceptable."
+   - Two graders per answer: the code check from Lab 2 (`…-no-ct102`) and the judge (`…-judge`), a grader with `type: prompt`.
+
+2. Lint it:
+
+   ```bash
+   vally lint -e evals/judge-controls.eval.yaml --strict
+   ```
+
+3. **Predict** each verdict, for the code check and for the judge. Then run:
+
+   ```bash
+   vally eval -e evals/judge-controls.eval.yaml
+   ```
+
+   The judge needs a few seconds per answer. Our run:
+
+   ```text
+   Loaded 4 stimuli from release-notes-judge-controls · 4 workers
+
+   release-notes-judge-controls
+
+     FAIL  note-mentions-unfinished-item · 1/2 graders · 0.0s
+      ✘ note-no-ct102  'CT-102' found in output
+      · score 50.0% < threshold 100.0% · trial 1
+      score: 50.0% · threshold: 100.0%
+
+     FAIL  wrong-answer · 0/2 graders · 0.0s
+      ✘ wrong-no-ct102  'CT-102' found in output
+      ✘ wrong-judge  Although the response correctly includes CT-101 and CT-103 and follows the
+                     requested concise format, it incorrectly announces CT-102, a key release-content
+                     error.
+      · score 0.0% < threshold 100.0% · trial 1
+      score: 0.0% · threshold: 100.0%
+
+     FAIL  no-summary-sentence · 1/2 graders · 0.0s
+      ✘ nosummary-judge  Although the two requested items are correctly announced and CT-102 is
+                         omitted, the answer fails the required opening-summary-sentence criterion.
+      · score 50.0% < threshold 100.0% · trial 1
+      score: 50.0% · threshold: 100.0%
+   …
+   ```
+
+   When the judge fails an answer, its reasoning is the check's evidence, right in the terminal. For the passing ones, look into the trial records: a judge is a grader with `"graderType": "prompt"`, and its `evidence` is its reasoning:
+
+   ```bash
+   RUN=$(ls -d vally-results/*/ | tail -1)
+   jq -r 'select(.type == "trial-result") | .stimulus as $s | .gradeResult.details[] | select(.graderType == "prompt") | "\($s): \(if .passed then "pass" else "fail" end)\n  \(.evidence)"' "$RUN/results.jsonl"
+   ```
+
+   Our results, with `gpt-5.6-luna` as the judge:
+
+   | Answer | Code check: no CT-102 | Judge | The judge's reasoning (shortened) |
+   | --- | --- | --- | --- |
+   | `known-good-answer` | <span class="pass">pass</span> | <span class="pass">pass</span> | "The answer satisfies all four rubric criteria directly and concisely." |
+   | `wrong-answer` | <span class="fail">fail</span> | <span class="fail">fail</span> | "…it incorrectly announces CT-102, a key release-content error." |
+   | `note-mentions-unfinished-item` | <span class="fail">fail</span> | <span class="pass">pass</span> | "The response satisfies every release-note requirement: it announces CT-101 and CT-103, excludes CT-102 appropriately, starts with a concise summary…" |
+   | `no-summary-sentence` | <span class="pass">pass</span> | <span class="fail">fail</span> | "…the answer fails the required opening-summary-sentence criterion." |
+
+4. Look at the two disagreements. They go in opposite directions:
+
+   - **The answer without a summary sentence:** the code check passes it, because CT-102 is absent. The judge fails it: it sees what no string check can, that the opening sentence is missing. Here the judge adds something only a judge can do.
+   - **The note about CT-102:** the code check fails it; the judge passes it. Both are right *by their own definition*. The rubric explicitly allows a note, and the code check allows no mention at all. In Lab 1, you decided that a note isn't acceptable.
+
+   The judge did exactly what the rubric said. The rubric is the part that disagrees with your definition of good.
+
+5. Make the rubric match your definition. In `evals/judge-controls.eval.yaml`, find the second line of the rubric:
+
+   ```yaml
+         - The answer does not announce CT-102 (Export reports to CSV) as part of this release. Saying that CT-102 is unfinished or was left out is acceptable.
+   ```
+
+   Replace that whole line, keeping the six spaces in front of the `-`, with:
+
+   ```yaml
+         - The answer does not mention CT-102 (Export reports to CSV) anywhere, not even to say that it was left out or comes later.
+   ```
+
+   Run the same command as in step 3 again, and read the judge's verdicts with the same `jq` command. Now the judge fails the note too:
+
+   | Answer | Code check | Judge |
+   | --- | --- | --- |
+   | `known-good-answer` | <span class="pass">pass</span> | <span class="pass">pass</span> |
+   | `wrong-answer` | <span class="fail">fail</span> | <span class="fail">fail</span> |
+   | `note-mentions-unfinished-item` | <span class="fail">fail</span> | <span class="fail">fail</span> |
+   | `no-summary-sentence` | <span class="pass">pass</span> | <span class="fail">fail</span> |
+
+   The judge and the code check now agree on the facts, and the judge adds the one thing code can't see.
+
+6. Add the calibrated judge to the real eval, as a new file, so the eval from Lab 3 stays unchanged for the experiments and for CI:
+
+   ```bash
+   cp solutions/lab-5/release-notes-judged.eval.yaml evals/
+   ```
+
+   Open `evals/release-notes-judged.eval.yaml` and compare it with `evals/release-notes.eval.yaml`. It's the same eval with three additions: `judge_model` under `defaults`, the strict `rubric` on the stimulus, and a sixth grader:
+
+   ```yaml
+         - type: prompt
+           name: judge-release-notes-quality
+           config:
+             scoring: binary
+   ```
+
+7. Run it: three trials of the real agent with the fixed skill, each graded by five code checks and the judge:
+
+   ```bash
+   vally eval -e evals/release-notes-judged.eval.yaml
+   ```
+
+   ```text
+   Summary
+     release-notes-judged  ✓ 1/1 (score 100% ≥ 100%)
+   ```
+
+   All six graders passed in all three trials. Everything passed, so the terminal shows no evidence. Read each trial's answer and the judge's reasoning with `./scripts/answers.sh`, which prints the evidence of every judge check, passing or not. For example: "The release notes satisfy every rubric requirement: they clearly announce both requested items, omit CT-102, begin with a concise summary, and remain brief with a friendly tone."
+
+8. Restart the dashboard on `vally-results` (Ctrl+C in its terminal, then the command from Lab 0) and select the newest run. Under **Grader breakdown**, the judge appears as its own grader type, `prompt`, next to the code checks. Expand a trial: `judge-release-notes-quality` is listed with the other checks, with its score.
+
+</Steps>
+
+## What just happened
+
+- You **calibrated** a judge before trusting it, with the same trick as in Lab 2: known answers through the mock executor. Only the judge ran, and only the judge cost tokens.
+- You saw that a judge and a code check can **disagree in both directions**, and that each disagreement teaches you something: once about what code can't see, once about what your rubric didn't say.
+- You **fixed the rubric, not the judge.** The rubric is the judge's specification.
+- You **read the judge's reasoning** in the trial records, where every check keeps its evidence.
+- You **added the judge to the real eval** as a separate file: the fast, free, deterministic code checks stay in `release-notes.eval.yaml` for experiments and CI; the judged eval adds the qualities that need judgment.
+
+Judges cost one more model call per trial, and they're slower: in our runs, anywhere from a few seconds to about two minutes per trial, depending on the service's load. One more reason to use code checks wherever they're enough.
+
+## Check yourself
+
+<details>
+<summary>Why calibrate the judge with the mock executor?</summary>
+
+Because you need answers whose verdict you know, to see whether the judge agrees with you. The mock executor supplies exactly your answers, without an agent: free for the agent side, the same every time, and any surprise is the judge's.
+
+</details>
+
+<details>
+<summary>In step 3, the judge passed the note about CT-102 and the code check failed it. Who was right?</summary>
+
+Both, by their own definitions: the rubric allowed a note, the code check allowed no mention at all. The real question is which definition is yours. In Lab 1 you decided against the note, so you changed the rubric to say so.
+
+</details>
+
+<details>
+<summary>Why is the judge a GPT model when the agent is a Claude model?</summary>
+
+A model that grades its own kind of output tends to be too kind to it; researchers call this self-preference bias. A judge from another model family is more independent. If you switch the agent to a GPT model, pick a judge from another family too, with `--param JUDGE_MODEL=<model-id>`.
+
+</details>
+
+## Stuck?
+
+- **Behind?** `scripts/catch-up.sh 5` puts both finished files in place, with the strict rubric.
+- **The judge's model isn't on your plan:** start `copilot`, type `/model`, pick another model, ideally from another family than the agent's, and run with `--param JUDGE_MODEL=<model-id>`. To change the default for good, edit the `judge_model` line in both eval files.
+- **Every judge grade is invalid**: when the judge can't answer, Vally marks the grade invalid instead of passing it. Check your sign-in with `./scripts/check-setup.sh` and the model name, then run again.
+- **Errors with your own endpoint**, such as one that names `set-your-endpoint.invalid`, or `LLM judge failed: 401`: see [Use your own endpoint](#use-your-own-endpoint) and [Troubleshooting](../../reference/troubleshooting/).
+
+## Use your own endpoint
+
+The judge can also run on a model endpoint of your own instead of Copilot: useful if you want judging to stay off your Copilot plan, or if your team already has a model deployment for evals. You need an endpoint that speaks the Azure OpenAI v1 API, such as an Azure OpenAI or Microsoft Foundry deployment of a GPT-5-family model, which supports the Responses API. [Model access and costs](../../start/model-access/#your-own-model-endpoint-optional) explains the options.
+
+<Steps>
+
+1. Put the endpoint's base URL, its key and the deployment name into `LLM_BASE_URL`, `LLM_API_KEY` and `LLM_MODEL`: in your `.env` file, or as Codespaces secrets. Test them with one small request:
+
+   ```bash
+   ./scripts/check-setup.sh --ping
+   ```
+
+   The last lines should show `✔ HTTP 200 from <your deployment>` and the model's reply.
+
+2. In both eval files, add a `judge_provider` block under `defaults`, below `judge_timeout`. It tells Vally where to send the judge's requests:
+
+   ```yaml
+     judge_provider:                           # bring your own key: where the judge's requests go
+       type: azure                             # Azure OpenAI-style API with an api-key header
+       baseUrl: ${JUDGE_BASE_URL=https://set-your-endpoint.invalid/openai/v1/}   # replaced by --param
+       wireApi: responses                      # use the Responses API
+       apiKeyEnv: LLM_API_KEY                  # the NAME of the variable that holds the key, never the key
+   ```
+
+   With a `judge_provider`, `judge_model` means the deployment name on your endpoint.
+
+3. Run with two params, which fill in the endpoint and the deployment:
+
+   ```bash
+   vally eval -e evals/judge-controls.eval.yaml \
+     --param JUDGE_BASE_URL="$LLM_BASE_URL" \
+     --param JUDGE_MODEL="$LLM_MODEL"
+   ```
+
+</Steps>
+
+- **The key never goes into the file.** `apiKeyEnv` names the environment variable, and Vally reads the key from it when it runs. Eval files get committed and shared; keys must never be.
+- **The fake default is deliberate.** `https://set-your-endpoint.invalid/openai/v1/` lets `vally lint` check the file anywhere, even in CI without an endpoint. If you forget `--param`, the judge fails with an error that names `set-your-endpoint.invalid`, instead of quietly calling another endpoint.
+- **`scripts/catch-up.sh 5`** puts the Copilot versions of both files back; add the block again afterwards.
+
+We tested this path against an Azure OpenAI-compatible endpoint with `gpt-5.6-luna`: the verdicts were the same as with the Copilot judge.
+
+## Go further
+
+- Add a fifth control to the judge controls: an answer with the right items and a summary, but a curt, unfriendly tone. Does the judge catch it?
+- Try another judge model with `--param JUDGE_MODEL=<model-id>`, and compare its verdicts on the four controls. Does it agree with you as well?
+- With your own endpoint, tired of typing `--param`? Vally also reads params from a file next to the eval. For `evals/judge-controls.eval.yaml`, create `evals/judge-controls.eval.params.yaml`:
+
+  ```yaml
+  params:
+    JUDGE_BASE_URL: https://<your-resource>.openai.azure.com/openai/v1/
+    JUDGE_MODEL: <your-deployment>
+  ```
+
+  `.gitignore` keeps `*.params.yaml` files out of your commits, so your endpoint stays private.
+
+**Next:** [Lab 6: GitHub Copilot Evals](../lab-6-copilot-evals/)

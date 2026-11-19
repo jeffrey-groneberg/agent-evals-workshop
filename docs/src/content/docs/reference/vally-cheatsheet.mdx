@@ -1,0 +1,175 @@
+---
+title: Vally cheat sheet
+description: The Vally commands, eval file fields, graders, result files and jq snippets used in the workshop, on one page.
+---
+
+All commands as used with Vally 0.21.0. Full reference: [Vally docs](https://microsoft.github.io/vally/).
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `vally lint -e <file-or-folder> --strict` | Checks eval files without running them; `--strict` treats warnings as errors |
+| `vally lint` | Checks the skills (`SKILL.md` files) in the current folder |
+| `vally eval -e <file>` | Runs one eval |
+| `vally eval --suite <name>` | Runs a suite from `.vally.yaml` |
+| `vally eval … --runs 5` | Overrides the number of trials |
+| `vally eval … --model <id>` | Overrides the agent's model |
+| `vally eval … --param KEY=value` | Fills in a `${KEY}` placeholder |
+| `vally eval … --verbose` | Also prints each failing trial's answer, turns, tool calls and tokens |
+| `vally eval … --require-pass` | Exits with code 1 when a verdict fails (for CI) |
+| `vally eval … --output-dir <dir>` | Saves results somewhere else |
+| `vally experiment run <file> --dry-run` | Shows an experiment's plan without running it |
+| `vally experiment run <file>` | Runs an experiment |
+| `vally experiment run <file> --param KEY=value` | Fills in a `${KEY}` placeholder in the experiment's evals |
+| `vally serve <folder> --port 3200` | Opens the results dashboard for one results folder: `vally-results`, or one experiment's folder. It reads the folder when it starts. In a Codespace, add `--allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"` |
+| `vally grade -e <file> < results.jsonl` | Grades saved trials again, without rerunning the agent |
+| `vally compare` | Compares two runs pair by pair with an LLM judge (spends tokens) |
+
+Exit codes of `vally eval`: `0` when the run completed, whether the verdict passed or failed; `1` for errors, and for failed verdicts with `--require-pass`.
+
+## An eval file
+
+```yaml
+name: my-eval                      # required
+description: What good looks like.
+type: capability                   # or regression (expects a baseline configuration)
+tags: { lane: ci }                 # for suites
+defaults:
+  executor: copilot-sdk            # or mock (no model)
+  model: claude-sonnet-5.5
+  runs: 3                          # trials per stimulus
+  timeout: 120s                    # per trial; unit required
+  judge_model: gpt-5.6-luna        # for prompt graders: a Copilot model, or your deployment's name
+  judge_timeout: 2m
+  judge_provider:                  # optional: your own judge endpoint instead of Copilot
+    type: azure                    # openai | azure | anthropic
+    baseUrl: ${JUDGE_BASE_URL=https://set-your-endpoint.invalid/openai/v1/}
+    wireApi: responses             # or completions
+    apiKeyEnv: LLM_API_KEY         # the variable's NAME, never the key
+agent_environment:
+  skills: [../.github/skills/my-skill]          # relative to this file
+  files:
+    - { src: ../data.json, dest: data.json }
+scoring:
+  threshold: 1                     # every grader must pass
+stimuli:
+  - name: typical-request          # unique
+    prompt: The request a real user would type.
+    rubric:                        # for prompt graders
+      - One criterion per line.
+    graders:
+      - { type: output-contains, name: must-mention, config: { substring: X } }
+      - { type: output-contains, name: must-not-mention, config: { substring: Y, negate: true } }
+```
+
+## Graders used in the workshop
+
+| Type | Checks | Config |
+| --- | --- | --- |
+| `output-contains` | The final answer contains a text (case-insensitive) | `substring`, `negate` |
+| `skill-invocation` | The transcript shows the skill was invoked | `required: [skill-name]` |
+| `file-contains` | A workspace file contains a value after the trial | `path`, `value` |
+| `prompt` | An LLM judge applies the stimulus's `rubric` | `scoring` (`binary`, `scale_1_5`, `scale_1_10`), `threshold`, `evidence` |
+
+Grader names must be unique in the whole file. More graders: [Graders reference](https://microsoft.github.io/vally/reference/graders/).
+
+## Params
+
+`${KEY}` placeholders, resolved in this order: `--param KEY=value` on the command line; then a params file next to the eval (`<name>.eval.params.yaml`) or `params` in `.vally.yaml`; then an inline default, `${KEY=default}`. Write `$${…}` for a literal `${…}`. A params file for `my.eval.yaml` is named `my.eval.params.yaml` and has a `params` key:
+
+```yaml
+params:
+  JUDGE_BASE_URL: https://<your-resource>.openai.azure.com/openai/v1/
+```
+
+## An experiment file
+
+```yaml
+name: my-experiment
+evals: [../evals/my.eval.yaml]     # relative to this file
+vary: [/defaults/model]            # what may differ; anything else is an error
+baseline: a
+variants:
+  a: { overrides: { model: claude-sonnet-5.5 } }
+  b: { overrides: { model: gpt-5.6-luna } }
+```
+
+Variants can override `runs`, `timeout`, `model`, `executor`, `judge_model`, `judge_provider` and more, and the environment's `skills`, `files` and `env`. To vary skills, use `vary: [/environment/skills]`.
+
+## Results
+
+Every `vally eval` saves a run folder:
+
+```text
+vally-results/
+└── <date-and-time>/                     one folder per run
+    ├── eval-results.md                  the summary table: checks, pass rate, pass@k, pass^k, duration, tokens, tool calls
+    ├── results.jsonl                    one "trial-result" line per trial, plus a "run-summary" line
+    └── <eval>/<stimulus>/<model>/<n>/   one folder per trial, counting from 0
+        ├── events.jsonl                 Copilot's own event log, with the model's reasoning summary
+        ├── metadata.json                the trial's settings and status: success or error
+        └── workspace.patch              every change the agent made to its files; empty: none
+```
+
+An experiment saves `vally-experiment-results/<date-and-time>/report.md`, with one table per variant, and one subfolder per variant, each with its own `results.jsonl` and trial folders.
+
+A trial line in `results.jsonl`:
+
+| Field | Contents |
+| --- | --- |
+| `stimulus`, `trialIndex` | Which task, which trial (from 0) |
+| `status`, `error` | `success`, or `error` with the message, when the trial didn't finish |
+| `trajectory.output` | The agent's final answer |
+| `trajectory.events` | The transcript: `user_message`, then per turn `token_usage`, `assistant_message`, `tool_call`, `tool_result`, `skill_activation` |
+| `trajectory.metrics` | Turns, tool calls, tokens, time |
+| `gradeResult` | `passed`, `score`, and in `details` each check's `name`, `graderType`, `passed` and `evidence` (for a judge: its reasoning) |
+
+## The dashboard
+
+```bash
+vally serve vally-results --port 3200 --allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+```
+
+Start it in its own terminal and open port 3200. It shows pass rates, outcomes, metrics and each trial's checks with their scores, and **Model comparison** compares two runs side by side. It doesn't show answers, transcripts or evidence: those are in `results.jsonl`. It reads the folder when it starts, so restart it after each run (Ctrl+C, then the Up arrow and Enter). For an experiment, serve its folder instead: `vally serve "$(ls -d vally-experiment-results/*/ | tail -1)" --port 3200 …`.
+
+## jq snippets
+
+```bash
+RUN=$(ls -d vally-results/*/ | tail -1)          # the newest run folder
+
+# Each trial: answer, verdict, score
+jq 'select(.type == "trial-result") | {stimulus, answer: .trajectory.output, passed: .gradeResult.passed, score: .gradeResult.score}' "$RUN/results.jsonl"
+
+# Each check with its evidence
+jq 'select(.type == "trial-result") | .gradeResult.details[] | {name, passed, evidence}' "$RUN/results.jsonl"
+
+# The judge's verdict and reasoning
+jq -r 'select(.type == "trial-result") | .stimulus as $s | .gradeResult.details[] | select(.graderType == "prompt") | "\($s): \(if .passed then "pass" else "fail" end)\n  \(.evidence)"' "$RUN/results.jsonl"
+
+# Trial 1's transcript: event types, tool calls, the skill as the agent received it, the tokens per turn
+jq -r 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[].type' "$RUN/results.jsonl"
+jq -r 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[] | select(.type == "tool_call") | "\(.data.toolName): \(.data.arguments)"' "$RUN/results.jsonl"
+jq -r 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[] | select(.type == "skill_activation") | .data.content' "$RUN/results.jsonl"
+jq -c 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[] | select(.type == "token_usage") | .data | {inputTokens, outputTokens}' "$RUN/results.jsonl"
+
+# Trial 1's reasoning, from Copilot's own log
+jq -r 'select(.type == "assistant.message") | .data.reasoningText // empty' "$RUN"*/*/*/0/events.jsonl
+
+# Trials that didn't finish, with their error
+jq -r 'select(.type == "trial-result" and .status == "error") | "\(.stimulus): \(.error)"' "$RUN/results.jsonl"
+
+# Trials that changed files
+find "$RUN" -name workspace.patch -size +0
+```
+
+## The starter's helper scripts
+
+Each script does something you can also do by hand; open it to see how.
+
+| Script | What it does |
+| --- | --- |
+| `scripts/check-setup.sh [--ping]` | Asks each tool for its version, looks for your Copilot sign-in and settings without showing them, reads the model names from the eval files. With `--ping`: one small request to your own endpoint |
+| `scripts/answers.sh [--tools] [run-folder]` | Runs the `jq` queries above on the newest run, or on the folder you name, and prints each trial's verdict, answer, tool calls and checks, with the evidence of the failed ones and of every judge |
+| `scripts/use-model.sh [<model-id>]` | Without an argument, lists the agent's `model:` line in every eval file; with one, rewrites those lines |
+| `scripts/catch-up.sh 2\|3\|4\|5\|7` | Brings your files to the end of that lab, so you can start the next one: it copies the finished files from `solutions/` and `lab-files/` into place. Files it would change are first copied to `.catch-up-backup/<time>/` |

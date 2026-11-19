@@ -1,0 +1,70 @@
+name: Docs
+
+# Builds the workshop site in docs/ on pull requests that change it, and publishes it to GitHub Pages from main.
+# Forks skip it: only the original repository publishes the site.
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/docs.yml
+      - docs/**
+  pull_request:
+    paths:
+      - .github/workflows/docs.yml
+      - docs/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build the site
+    if: github.repository == 'jeffrey-groneberg/agent-evals-workshop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: docs
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Check the Chinese pages against the English ones
+        run: npm run check:translation
+        continue-on-error: true
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: docs/dist
+
+  deploy:
+    name: Publish to GitHub Pages
+    if: github.repository == 'jeffrey-groneberg/agent-evals-workshop' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    # One deployment at a time, and a newer push never cancels one in flight.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

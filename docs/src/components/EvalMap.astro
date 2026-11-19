@@ -1,0 +1,230 @@
+---
+// "At a glance": where a lab works in an eval. The same seven stages appear on every lab, so readers see
+// what's new, what changes and what isn't used yet. Text props may contain inline HTML such as <code>.
+import { Icon } from '@astrojs/starlight/components';
+
+type State = 'new' | 'on' | 'changed' | 'off';
+interface Stage {
+	text?: string;
+	state?: State;
+}
+interface Props {
+	doing: string;
+	testing: string;
+	checking: string;
+	task?: Stage;
+	agent?: Stage;
+	environment?: Stage;
+	trials?: Stage;
+	checks?: Stage;
+	judge?: Stage;
+	results?: Stage;
+}
+
+const props = Astro.props;
+const zh = Astro.locals.starlightRoute.lang === 'zh-CN';
+const t = zh
+	? {
+			title: '本练习一览',
+			doing: '你要做',
+			testing: '被测对象',
+			checking: '检查方式',
+			states: { new: '新', changed: '有变化', on: '', off: '' },
+			off: '本练习不使用',
+			names: { task: '任务', agent: '智能体', environment: '环境', trials: '试验', checks: '检查项', judge: 'LLM 评审', results: '结果' },
+		}
+	: {
+			title: 'This lab at a glance',
+			doing: 'You do',
+			testing: 'Under test',
+			checking: 'Checked by',
+			states: { new: 'new', changed: 'changed', on: '', off: '' },
+			off: 'Not used here',
+			names: { task: 'Task', agent: 'Agent', environment: 'Environment', trials: 'Trials', checks: 'Checks', judge: 'LLM judge', results: 'Results' },
+		};
+
+const order = [
+	['task', 'document'],
+	['agent', 'laptop'],
+	['environment', 'puzzle'],
+	['trials', 'random'],
+	['checks', 'approve-check'],
+	['judge', 'star'],
+	['results', 'analytics'],
+] as const;
+
+const stages = order.map(([key, icon]) => {
+	const stage = props[key] ?? {};
+	const state: State = stage.state ?? (stage.text ? 'on' : 'off');
+	return { key, icon, name: t.names[key], state, text: state === 'off' ? t.off : (stage.text ?? '') };
+});
+---
+
+<figure class="eval-map not-content">
+	<figcaption class="eval-map-title">{t.title}</figcaption>
+	<dl class="eval-map-summary">
+		<div><dt>{t.doing}</dt><dd set:html={props.doing} /></div>
+		<div><dt>{t.testing}</dt><dd set:html={props.testing} /></div>
+		<div><dt>{t.checking}</dt><dd set:html={props.checking} /></div>
+	</dl>
+	<ol class="eval-map-stages">
+		{
+			stages.map((stage) => (
+				<li class:list={['eval-stage', `is-${stage.state}`]}>
+					<span class="eval-stage-head">
+						<Icon name={stage.icon} size="1.05rem" />
+						<span class="eval-stage-name">{stage.name}</span>
+					</span>
+					{t.states[stage.state] && <span class="eval-stage-badge">{t.states[stage.state]}</span>}
+					<span class="eval-stage-text" set:html={stage.text} />
+				</li>
+			))
+		}
+	</ol>
+</figure>
+
+<style>
+	.eval-map {
+		--eval-peach: #d9773f;
+		container-type: inline-size;
+		margin: 1.5rem 0 2rem;
+		padding: 1rem 1.1rem 1.1rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.9rem;
+		background: color-mix(in srgb, var(--sl-color-accent-low) 35%, transparent);
+	}
+	.eval-map-title {
+		margin: 0 0 0.6rem;
+		font-size: var(--sl-text-xs);
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--sl-color-text-accent);
+	}
+	.eval-map-summary {
+		display: grid;
+		gap: 0.3rem;
+		margin: 0 0 1rem;
+	}
+	.eval-map-summary div {
+		display: grid;
+		grid-template-columns: 7.5rem 1fr;
+		gap: 0.75rem;
+		align-items: baseline;
+	}
+	.eval-map-summary dt {
+		font-size: var(--sl-text-sm);
+		font-weight: 700;
+		color: var(--sl-color-white);
+	}
+	.eval-map-summary dd {
+		margin: 0;
+		font-size: var(--sl-text-sm);
+		line-height: 1.45;
+	}
+	.eval-map-stages {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.5rem;
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.eval-stage {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		gap: 0.3rem;
+		min-height: 5.25rem;
+		margin: 0 !important;
+		padding: 0.55rem 0.6rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.6rem;
+		background: var(--sl-color-bg);
+	}
+	.eval-stage-head {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		color: var(--sl-color-white);
+	}
+	.eval-stage-name {
+		font-size: 0.72rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+	}
+	.eval-stage-text {
+		font-size: 0.8rem;
+		line-height: 1.35;
+		color: var(--sl-color-gray-2);
+		overflow-wrap: anywhere;
+	}
+	.eval-stage-text :global(code) {
+		font-size: 0.74rem;
+		overflow-wrap: anywhere;
+	}
+	.eval-stage-badge {
+		position: absolute;
+		top: -0.55rem;
+		right: 0.45rem;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		font-size: 0.68rem;
+		font-weight: 700;
+		line-height: 1.3rem;
+		color: var(--sl-color-black);
+		background: var(--sl-color-accent);
+	}
+	.eval-stage.is-new {
+		border: 2px solid var(--sl-color-accent);
+		background: color-mix(in srgb, var(--sl-color-accent) 10%, var(--sl-color-bg));
+	}
+	.eval-stage.is-new .eval-stage-head {
+		color: var(--sl-color-text-accent);
+	}
+	.eval-stage.is-changed {
+		border: 2px solid var(--eval-peach);
+		background: color-mix(in srgb, var(--eval-peach) 10%, var(--sl-color-bg));
+	}
+	.eval-stage.is-changed .eval-stage-head {
+		color: var(--eval-peach);
+	}
+	.eval-stage.is-changed .eval-stage-badge {
+		background: var(--eval-peach);
+	}
+	.eval-stage.is-off {
+		border-style: dashed;
+		background: transparent;
+		opacity: 0.55;
+	}
+	.eval-stage.is-off .eval-stage-text {
+		font-style: italic;
+	}
+	@container (min-width: 28rem) {
+		.eval-map-stages {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+	@container (min-width: 46rem) {
+		.eval-map-stages {
+			grid-template-columns: repeat(7, minmax(0, 1fr));
+			gap: 0.9rem;
+		}
+		.eval-stage:not(:last-child)::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			right: -0.85rem;
+			width: 0.8rem;
+			height: 2px;
+			background: var(--sl-color-gray-4);
+		}
+	}
+	@container (max-width: 28rem) {
+		.eval-map-summary div {
+			grid-template-columns: 1fr;
+			gap: 0;
+		}
+	}
+</style>

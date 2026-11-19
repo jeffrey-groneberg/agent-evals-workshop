@@ -1,0 +1,149 @@
+---
+title: Model access and costs
+description: Which model does what in the workshop, where the LLM judge runs, how to use your own model endpoint if you want to, which models are pinned and why, and what the labs cost.
+---
+
+import { LinkCard } from '@astrojs/starlight/components';
+import Flow from '../../../components/Flow.astro';
+
+Two different models do two different jobs in this workshop. By default, both run on GitHub Copilot with the same sign-in, so you need no other account or key. Knowing which model does what tells you what each lab costs.
+
+<Flow
+  label="Who calls which model"
+  steps={[
+    { label: 'Your eval', detail: 'A YAML file in evals/', tone: 'input' },
+    { label: 'Vally', detail: 'Runs the trials and the graders', tone: 'input' },
+    { label: 'Agent under test', detail: 'GitHub Copilot, on your Copilot plan', tone: 'agent' },
+    { label: 'LLM judge', detail: 'A second model, on your Copilot plan or your own endpoint', tone: 'grader' },
+  ]}
+/>
+
+| Job | Model | Runs on | Needed from |
+| --- | --- | --- | --- |
+| **Agent under test**: the agent whose behavior you measure. It reads the skill and the backlog and writes the release notes. | `claude-sonnet-5.5`, from Anthropic's Claude family | GitHub Copilot, on your Copilot plan | Lab 0 |
+| **LLM judge**: a second model that grades answers against a rubric, for qualities a code check can't see. | `gpt-5.6-luna`, from OpenAI's GPT family | GitHub Copilot, on your Copilot plan; optionally your own endpoint | Lab 5 |
+
+## Why a separate model for the judge?
+
+A model that grades its own kind of output tends to be too kind to it; researchers call this **self-preference bias**. A judge from a different model family is more independent. In the labs, a GPT model judges a Claude model. If you switch the agent to a GPT model, switch the judge too: pick one from another family, for example a Claude model, and pass it with `--param JUDGE_MODEL=<model-id>`. You'll learn more in [LLM judges](../../concepts/llm-judges/).
+
+## The judge runs on GitHub Copilot
+
+From Lab 5 on, the eval files name the judge's model under `defaults`:
+
+```yaml
+defaults:
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # the judge: a Copilot model, from another model family than the agent's
+```
+
+`${JUDGE_MODEL=gpt-5.6-luna}` is a **param**: a placeholder with a default, `gpt-5.6-luna`, that you can replace on the command line. The judge uses the same Copilot sign-in as the agent under test, your Codespace's `GITHUB_TOKEN` or the `COPILOT_GITHUB_TOKEN` from your `.env` file, so there's no endpoint, no API key and no `--param` to set:
+
+```bash
+vally eval -e evals/judge-controls.eval.yaml
+```
+
+Each judge call goes to your Copilot plan, like the agent's requests. How that's billed depends on your plan.
+
+To use another judge model for one run, pass its ID. Start `copilot` and type `/model` to see the models on your plan; ideally, pick one from another model family than the agent's:
+
+```bash
+vally eval -e evals/judge-controls.eval.yaml --param JUDGE_MODEL=<model-id>
+```
+
+## Your own model endpoint (optional)
+
+You don't need this for the labs. If you prefer, the judge can run on your own model deployment, for example on Azure OpenAI or Microsoft Foundry: you bring your own key. Vally then sends the judge's requests to your endpoint instead of to GitHub Copilot. The agent under test still runs on Copilot.
+
+What you need:
+
+- An endpoint that speaks the Azure OpenAI v1 API with the Responses API, such as an Azure OpenAI or Microsoft Foundry deployment.
+- A deployment of a GPT-5-family model. The judge needs a reasoning model that supports the Responses API.
+- An API key for that endpoint.
+
+### Your endpoint and key
+
+You give Vally three values as environment variables: Codespaces secrets in a Codespace (see [Add or change a secret](../codespaces/#add-or-change-a-secret)), or lines in your `.env` file on your computer (see [Set up on your computer](../local/)).
+
+| Variable | What it is | Example |
+| --- | --- | --- |
+| `LLM_BASE_URL` | The endpoint's base URL, ending in `/openai/v1/` | `https://<your-resource>.openai.azure.com/openai/v1/` |
+| `LLM_API_KEY` | The API key for that endpoint, for example from your Azure resource's **Keys and Endpoint** page | (secret) |
+| `LLM_MODEL` | The model's deployment name on that endpoint | Your deployment's name |
+
+Set all three, or none: if only some are set, `./scripts/check-setup.sh` reports a problem. To test them with one small request to your endpoint, run:
+
+```bash
+./scripts/check-setup.sh --ping
+```
+
+The endpoint part of the output looks like this, with your deployment's name. The key shows only its length:
+
+```text
+Your own model endpoint (optional: without one, the judge runs on your Copilot plan)
+  ✔ LLM_BASE_URL is set (ends with /openai/v1/)
+  ✔ LLM_API_KEY is set (32 characters, not shown)
+  ✔ LLM_MODEL (deployment name): <name>
+
+Endpoint test: one small request
+  ✔ HTTP 200 from <name>: OK
+```
+
+[Lab 8](../../labs/lab-8-compare-models/), part B, uses the same three variables to make a model on your endpoint the agent under test.
+
+### How Vally uses the key
+
+To point the judge at your endpoint, you add a `judge_provider` block under `defaults` in the eval file. [Lab 5](../../labs/lab-5-llm-judge/) shows every step:
+
+```yaml
+defaults:
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # with judge_provider: the deployment name on your endpoint
+  judge_timeout: 2m
+  judge_provider:                           # bring your own key: where the judge's requests go
+    type: azure                             # Azure OpenAI-style API with an api-key header
+    baseUrl: ${JUDGE_BASE_URL=https://set-your-endpoint.invalid/openai/v1/}   # replaced by --param
+    wireApi: responses                      # use the Responses API
+    apiKeyEnv: LLM_API_KEY                  # the NAME of the variable that holds the key, never the key
+```
+
+Then you run the eval with two params:
+
+```bash
+vally eval -e evals/judge-controls.eval.yaml \
+  --param JUDGE_BASE_URL="$LLM_BASE_URL" \
+  --param JUDGE_MODEL="$LLM_MODEL"
+```
+
+- **The key never appears in the file.** `apiKeyEnv` holds only the *name* of an environment variable. Vally reads the key from it when it runs.
+- **`--param` fills in the placeholders.** Vally params can't read environment variables, so you pass the values on the command line, and your shell fills in `$LLM_BASE_URL` and `$LLM_MODEL`. With `judge_provider`, `judge_model` is the deployment name on your endpoint.
+- **The default endpoint is fake on purpose.** `https://set-your-endpoint.invalid/openai/v1/` lets `vally lint` check the file anywhere, even in CI where there's no endpoint. If you forget `--param JUDGE_BASE_URL`, or `LLM_BASE_URL` is empty, the judge fails loudly, with an error that names `set-your-endpoint.invalid`.
+- **What goes over the wire:** a `POST` to `<endpoint>/responses` with your key in an `api-key` header, the deployment name as `model`, and `store: false`, which asks the endpoint not to store the response. Your provider's own logging and retention policies still apply.
+- **Other providers.** Vally supports three provider types: `azure`, `openai` and `anthropic`. The workshop tested `azure` with `wireApi: responses` against a real endpoint, and the judge's verdicts were identical to the Copilot judge's.
+
+To judge on Copilot again, delete the `judge_provider` block and run without the `--param` options.
+
+## Pinned models: comparable, not deterministic
+
+The labs pin their models: the agent's model is `claude-sonnet-5.5` (written into each eval file), the judge's model is `gpt-5.6-luna`, and Vally is 0.21.0. Pinning means everyone measures the same thing, so you can compare your results with your neighbor's and with the output shown on these pages.
+
+**Do I have to use these models?** No. If `claude-sonnet-5.5` isn't available on your plan, pick another: start `copilot`, type `/model` to see your models, then run `./scripts/use-model.sh <model-id>` once. The script edits the agent's `model:` line in every eval file in `evals/`, `lab-files/` and `solutions/`. So the files you copy in later labs, and the ones `scripts/catch-up.sh` puts in place, use the new model too, including Lab 4's experiment and Lab 7's CI. Run the script without a model ID to see which model each file uses. For a single run, `vally eval … --model <model-id>` also works, without editing any file. The script leaves the judge alone: for another judge model, add `--param JUDGE_MODEL=<model-id>` when you run. The labs' lessons hold for any capable model; only the exact numbers change.
+
+**Will I get exactly the same answers?** No, and that's expected. Language models don't give the same answer twice, even with the same model and prompt. That's why every real run in the labs uses three **trials** and reports a pass rate rather than a single pass or fail. Two things in the labs *are* fully deterministic: the code checks, and the mock executor in Labs 2 and 5, which uses no agent model at all. See [Trials and metrics](../../concepts/trials-and-metrics/).
+
+## What the labs cost
+
+| Lab | Agent runs | Judge calls |
+| --- | --- | --- |
+| Lab 0 | 1 | 0 |
+| Labs 1 and 2 | 0 | 0 |
+| Lab 3 | 3 | 0 |
+| Lab 4 | 6, plus 3 if you rerun the eval | 0 |
+| Lab 5 | 3 | about 11 |
+| Lab 6 | a few prompts and one run | 0 |
+
+By default, all of these go to your Copilot plan. Each agent run sends one prompt to GitHub Copilot, so it counts toward your plan like a prompt you send in Copilot CLI, and each judge call goes to your plan too. If you use your own endpoint for the judge, the judge calls go to your endpoint instead. How Copilot use is billed depends on your plan; check your plan's usage page if you're unsure.
+
+In our test runs, Lab 0's one-word answer used about 20,000 tokens, and one Lab 3 trial used about 60,000 to 65,000. A trial took about 10 to 30 seconds without a judge. Most of those tokens are the agent's standard instructions and tool descriptions, not your prompt.
+
+## Next
+
+<LinkCard title="Lab 0: Set up and check" description="Run one tiny real eval to prove everything works." href="../../labs/lab-0-setup/" />

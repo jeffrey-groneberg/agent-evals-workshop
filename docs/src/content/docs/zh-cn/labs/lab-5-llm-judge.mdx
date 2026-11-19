@@ -1,0 +1,299 @@
+---
+title: '练习 5：添加 LLM 评审'
+description: 编写评分标准，用已知答案校准 LLM 评审，收紧评分标准，把评审加入真实的评估，并阅读它的判定结果和理由。
+sidebar:
+  label: '5. 添加 LLM 评审'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../../components/LabMeta.astro';
+import EvalMap from '../../../../components/EvalMap.astro';
+import Pieces from '../../../../components/Pieces.astro';
+import Flow from '../../../../components/Flow.astro';
+
+<LabMeta time="20 分钟" cost="3 次 Copilot 运行和约 11 次评审调用，计入你的 Copilot 计划" uses="evals/judge-controls.eval.yaml, evals/release-notes-judged.eval.yaml" />
+
+<figure class="illustration">
+  ![蜜桃色机器人扮演 LLM 评审，坐在桌前，拿着夹有评分标准的写字板审阅答案卡片；旁边是代码检查项用的放大镜工作台。每张卡片上都有评审的徽章和代码检查项的徽章：其中两对一致，两对不一致。蓝绿色机器人拿着更多卡片在一旁等候。](../../../../assets/labs/lab-5.jpg)
+  <figcaption>用你已知的答案校准之后，第二个模型就能评判代码无法检查的内容。</figcaption>
+</figure>
+
+你在练习 1 中定下的标准里，有两条无法用字符串来检查：“以一句概括本次发布的简短句子开头”和“友好且简短”。对于这两条，你要添加一个 **LLM 评审**：由第二个模型阅读每个答案，并依据书面的评分标准（rubric）做出判定。和练习 2 中的检查项一样，在信任评审之前，你要先用已知答案测试它。
+
+<EvalMap
+  doing="编写评分标准，用已知答案校准 LLM 评审，收紧评分标准，再把评审加入真实的评估（eval）。"
+  testing="先用已知答案测试评审，再用校准后的评审测试智能体"
+  checking="代码检查项负责事实，LLM 评审依据评分标准负责质量"
+  task={{ text: '先是已知答案，然后是真实任务' }}
+  agent={{ text: '校准时用模拟执行器（mock），之后用 GitHub Copilot', state: 'changed' }}
+  environment={{ text: '修复后的技能（skill）和 <code>backlog.json</code>' }}
+  trials={{ text: '每个已知答案 1 次；真实评估中 3 次' }}
+  checks={{ text: '和之前一样的代码检查项' }}
+  judge={{ text: 'Copilot 上的 <code>gpt-5.6-luna</code>，使用你的评分标准', state: 'new' }}
+  results={{ text: '评审对每个答案给出的判定结果和理由', state: 'new' }}
+/>
+
+## 你会用到的要素
+
+<Pieces
+  items={[
+    { term: 'LLM 评审', def: '一种评分器：它把答案连同你的评分标准一起发给第二个模型，并取回判定结果及其理由。', analogy: '拿着检查清单的审阅者', where: '带有 <code>type: prompt</code> 的评分器', isNew: true },
+    { term: '评分标准（rubric）', def: '评审使用的标准，每行一条。它是评审的规格说明：凡是其中没写的，评审都会自行决定。', analogy: '审阅者的检查清单', where: '任务（stimulus）下的 <code>rubric:</code>', isNew: true },
+    { term: '评审模型', def: '负责评判的模型。这里是 GitHub Copilot 提供的 <code>gpt-5.6-luna</code>：它与智能体所用的 Claude 模型属于不同的模型系列，因此更加独立。它使用你的登录身份运行，计入你的 Copilot 计划。', analogy: '请另一位医生给出第二意见', where: '<code>defaults</code> 下的 <code>judge_model</code>', isNew: true },
+    { term: '参数（param）', def: 'YAML 中带默认值的占位符，例如 <code>${JUDGE_MODEL=gpt-5.6-luna}</code>。用 <code>--param</code> 可以只为某一次运行修改它，无需编辑文件。', analogy: '带默认值的函数参数', where: '<code>--param JUDGE_MODEL=&lt;model-id&gt;</code>', isNew: true },
+    { term: '二元评分', def: '评审只回答通过或失败，而不是给出 1 到 5 的分数。这样更容易对照你自己的判断来检查。', analogy: '考试中的是非题', where: '<code>config: { scoring: binary }</code>', isNew: true },
+    { term: '校准', def: '用你已知判定结果的答案来检查评审，并修改评分标准，直到评审与你的判断一致。已知答案由模拟执行器提供。', analogy: '称重前先把秤归零', where: '<code>evals/judge-controls.eval.yaml</code>', isNew: true },
+    { term: '评审模型提供方（可选）', def: '如果你自带模型终结点和密钥，评审的请求就发往这里。不配置时，评审在 GitHub Copilot 上运行。', analogy: '审阅者的地址', where: '<code>defaults</code> 下的 <code>judge_provider</code>；见本练习末尾', isNew: false },
+  ]}
+/>
+
+## 为什么这很重要
+
+评审也是评分器，而评分器是会出错的。评审出错的方式比字符串检查更难预测：它可能过于宽松，可能按自己对“好”的理解来判断，也可能对不明确的情况每次给出不同的判定。所以，你要像对待练习 2 中的检查项那样对待它：先通过**模拟执行器**使用已知答案，这样被测试的只有评审，消耗 token 的也只有评审。
+
+<Flow
+  label="校准评审"
+  steps={[
+    { label: '已知答案', detail: '模拟执行器：不运行智能体', tone: 'input' },
+    { label: '代码检查项', detail: '是否不含 CT-102？', tone: 'grader' },
+    { label: 'LLM 评审', detail: '由 Copilot 模型按评分标准评判', tone: 'grader' },
+    { label: '比较', detail: '它们与你一致吗？彼此之间一致吗？', tone: 'result' },
+  ]}
+/>
+
+## 开始之前
+
+这里不需要做任何设置：评审在 GitHub Copilot 上运行，使用与智能体相同的登录身份。评估文件使用 `gpt-5.6-luna` 作为评审模型。如果你的 Copilot 计划中没有这个模型，请参阅[卡住了？](#卡住了)。如果你更想在自己的模型终结点（例如 Azure OpenAI 部署）上运行评审，请先按本文完成练习，然后按照末尾的[使用你自己的终结点](#使用你自己的终结点)操作。
+
+## 步骤
+
+<Steps>
+
+1. 把评审的对照用例复制到 `evals/`：
+
+   ```bash
+   cp lab-files/lab-5/judge-controls.eval.yaml evals/
+   ```
+
+   打开 `evals/judge-controls.eval.yaml`，找到以下几个部分：
+
+   - `executor: mock`：这四个答案又是已知答案，分别是练习 1 中答案 C、A、B 和 D 的缩短版。答案 B 保留了关于 CT-102 的备注，但去掉了“可以把 CT-102 加回来”的提议。
+   - `defaults` 下的 `judge_model: ${JUDGE_MODEL=gpt-5.6-luna}`：评审模型，写成带默认值的参数。
+   - `rubric: &rubric`：四条标准，只定义一次，再通过 `*rubric` 在每个答案中复用。请仔细阅读第二行：“Saying that CT-102 is unfinished or was left out is acceptable.”（指出 CT-102 尚未完成或被略去是可以接受的。）
+   - 每个答案有两个评分器：来自练习 2 的代码检查项（`…-no-ct102`）和评审（`…-judge`），后者是一个带有 `type: prompt` 的评分器。
+
+2. 用 lint 检查它：
+
+   ```bash
+   vally lint -e evals/judge-controls.eval.yaml --strict
+   ```
+
+3. **预测**每个判定结果：代码检查项会怎么判，评审又会怎么判。然后运行：
+
+   ```bash
+   vally eval -e evals/judge-controls.eval.yaml
+   ```
+
+   评审处理每个答案需要几秒钟。我们的一次运行结果：
+
+   ```text
+   Loaded 4 stimuli from release-notes-judge-controls · 4 workers
+
+   release-notes-judge-controls
+
+     FAIL  note-mentions-unfinished-item · 1/2 graders · 0.0s
+      ✘ note-no-ct102  'CT-102' found in output
+      · score 50.0% < threshold 100.0% · trial 1
+      score: 50.0% · threshold: 100.0%
+
+     FAIL  wrong-answer · 0/2 graders · 0.0s
+      ✘ wrong-no-ct102  'CT-102' found in output
+      ✘ wrong-judge  Although the response correctly includes CT-101 and CT-103 and follows the
+                     requested concise format, it incorrectly announces CT-102, a key release-content
+                     error.
+      · score 0.0% < threshold 100.0% · trial 1
+      score: 0.0% · threshold: 100.0%
+
+     FAIL  no-summary-sentence · 1/2 graders · 0.0s
+      ✘ nosummary-judge  Although the two requested items are correctly announced and CT-102 is
+                         omitted, the answer fails the required opening-summary-sentence criterion.
+      · score 50.0% < threshold 100.0% · trial 1
+      score: 50.0% · threshold: 100.0%
+   …
+   ```
+
+   当评审判定某个答案失败时，它的理由就是该检查项的证据，直接显示在终端里。对于通过的答案，请查看试验记录：评审是一个带有 `"graderType": "prompt"` 的评分器，它的 `evidence` 就是它的理由：
+
+   ```bash
+   RUN=$(ls -d vally-results/*/ | tail -1)
+   jq -r 'select(.type == "trial-result") | .stimulus as $s | .gradeResult.details[] | select(.graderType == "prompt") | "\($s): \(if .passed then "pass" else "fail" end)\n  \(.evidence)"' "$RUN/results.jsonl"
+   ```
+
+   我们用 `gpt-5.6-luna` 作为评审模型得到的结果：
+
+   | 答案 | 代码检查项：不含 CT-102 | 评审 | 评审的理由（节选） |
+   | --- | --- | --- | --- |
+   | `known-good-answer` | <span class="pass">通过</span> | <span class="pass">通过</span> | “The answer satisfies all four rubric criteria directly and concisely.” |
+   | `wrong-answer` | <span class="fail">失败</span> | <span class="fail">失败</span> | “…it incorrectly announces CT-102, a key release-content error.” |
+   | `note-mentions-unfinished-item` | <span class="fail">失败</span> | <span class="pass">通过</span> | “The response satisfies every release-note requirement: it announces CT-101 and CT-103, excludes CT-102 appropriately, starts with a concise summary…” |
+   | `no-summary-sentence` | <span class="pass">通过</span> | <span class="fail">失败</span> | “…the answer fails the required opening-summary-sentence criterion.” |
+
+4. 看看这两处分歧。它们的方向正好相反：
+
+   - **没有概括句的答案**：代码检查项判它通过，因为其中没有 CT-102。评审判它失败：它看到了任何字符串检查都看不到的问题，即缺少开头的概括句。在这里，评审做到了只有评审才能做到的事。
+   - **关于 CT-102 的备注**：代码检查项判它失败，评审判它通过。**按各自的定义**，两者都是对的。评分标准明确允许加一条备注，代码检查项则完全不允许提及。而你在练习 1 中认定，这样的备注是不可接受的。
+
+   评审完全是按评分标准行事的。与你对“好”的定义不一致的，其实是评分标准。
+
+5. 让评分标准与你的定义一致。在 `evals/judge-controls.eval.yaml` 中，找到评分标准的第二行：
+
+   ```yaml
+         - The answer does not announce CT-102 (Export reports to CSV) as part of this release. Saying that CT-102 is unfinished or was left out is acceptable.
+   ```
+
+   把这一整行替换为下面这行，并保留 `-` 前面的 6 个空格：
+
+   ```yaml
+         - The answer does not mention CT-102 (Export reports to CSV) anywhere, not even to say that it was left out or comes later.
+   ```
+
+   再次运行第 3 步中的同一条命令，并用同一条 `jq` 命令查看评审的判定结果。现在，评审也判定带备注的答案失败了：
+
+   | 答案 | 代码检查项 | 评审 |
+   | --- | --- | --- |
+   | `known-good-answer` | <span class="pass">通过</span> | <span class="pass">通过</span> |
+   | `wrong-answer` | <span class="fail">失败</span> | <span class="fail">失败</span> |
+   | `note-mentions-unfinished-item` | <span class="fail">失败</span> | <span class="fail">失败</span> |
+   | `no-summary-sentence` | <span class="pass">通过</span> | <span class="fail">失败</span> |
+
+   现在，评审和代码检查项在事实层面达成了一致，而评审还补上了代码看不到的那一点。
+
+6. 把校准好的评审加入真实的评估。请把它作为一个新文件添加，这样练习 3 中的评估就能保持不变，继续用于实验和 CI：
+
+   ```bash
+   cp solutions/lab-5/release-notes-judged.eval.yaml evals/
+   ```
+
+   打开 `evals/release-notes-judged.eval.yaml`，与 `evals/release-notes.eval.yaml` 进行比较。它们是同一个评估，只多了三处内容：`defaults` 下的 `judge_model`、任务（stimulus）上严格版的 `rubric`，以及第六个评分器：
+
+   ```yaml
+         - type: prompt
+           name: judge-release-notes-quality
+           config:
+             scoring: binary
+   ```
+
+7. 运行它：使用修复后的技能，对真实的智能体进行 3 次试验，每次试验都由 5 个代码检查项和评审来评分：
+
+   ```bash
+   vally eval -e evals/release-notes-judged.eval.yaml
+   ```
+
+   ```text
+   Summary
+     release-notes-judged  ✓ 1/1 (score 100% ≥ 100%)
+   ```
+
+   全部 6 个评分器在 3 次试验中都通过了。因为全部通过，终端里不显示任何证据。用 `./scripts/answers.sh` 查看每次试验的答案和评审的理由，它会打印每个评审检查项的证据，无论是否通过。例如：“The release notes satisfy every rubric requirement: they clearly announce both requested items, omit CT-102, begin with a concise summary, and remain brief with a friendly tone.”
+
+8. 针对 `vally-results` 重新启动仪表板（在它的终端中按 Ctrl+C，然后运行练习 0 中的命令），并选择最新的运行。在 **Grader breakdown** 下，评审作为单独的评分器类型 `prompt` 出现在代码检查项旁边。展开一次试验：`judge-release-notes-quality` 与其他检查项列在一起，并显示它的分数。
+
+</Steps>
+
+## 刚才发生了什么
+
+- 你在信任评审之前先**校准**了它，用的是和练习 2 相同的技巧：通过模拟执行器提供已知答案。只有评审在运行，也只有评审消耗了 token。
+- 你看到评审和代码检查项可能**在两个方向上产生分歧**，而每一次分歧都能让你学到东西：一次是关于代码看不到的内容，一次是关于评分标准没有写明的内容。
+- 你**修改的是评分标准，而不是评审**。评分标准就是评审的规格说明。
+- 你在试验记录中**读到了评审的理由**，每个检查项的证据都保存在那里。
+- 你以单独文件的形式**把评审加入了真实的评估**：快速、免费、确定性的代码检查项留在 `release-notes.eval.yaml` 中，用于实验和 CI；带评审的评估则补充了那些需要判断的质量要求。
+
+评审会让每次试验多一次模型调用，而且速度更慢：在我们的运行中，每次试验耗时从几秒到约 2 分钟不等，取决于服务的负载。这也是在代码检查项够用的地方就使用代码检查项的又一个理由。
+
+## 自我检查
+
+<details>
+<summary>为什么要用模拟执行器校准评审？</summary>
+
+因为你需要一些已知判定结果的答案，才能看出评审是否与你一致。模拟执行器不经过智能体，原样提供你的答案：智能体这一侧不产生费用，每次结果都一样，出现任何意外都只能是评审造成的。
+
+</details>
+
+<details>
+<summary>在第 3 步中，评审判定关于 CT-102 的备注通过，代码检查项却判它失败。谁是对的？</summary>
+
+按各自的定义，两者都对：评分标准允许加备注，代码检查项则完全不允许提及。真正的问题是，哪个定义才是你的。你在练习 1 中决定不接受这样的备注，所以你修改了评分标准，把这一点写明。
+
+</details>
+
+<details>
+<summary>智能体用的是 Claude 模型，为什么评审用的是 GPT 模型？</summary>
+
+模型在评判与自己同类的输出时，往往会过于宽容；研究人员把这称为自我偏好偏差。来自另一个模型系列的评审更加独立。如果你把智能体换成 GPT 模型，也请通过 `--param JUDGE_MODEL=<model-id>` 选择另一个系列的评审模型。
+
+</details>
+
+## 卡住了？
+
+- **进度落后了？** `scripts/catch-up.sh 5` 会把两个完成版文件都放到位，其中包含严格版的评分标准。
+- **你的计划中没有评审所用的模型**：启动 `copilot`，输入 `/model`，选择另一个模型（最好与智能体的模型属于不同系列），然后加上 `--param JUDGE_MODEL=<model-id>` 运行。要永久修改默认值，请编辑两个评估文件中的 `judge_model` 行。
+- **评审的每次评分都无效**：评审无法给出回答时，Vally 会把这次评分标记为无效，而不是判为通过。用 `./scripts/check-setup.sh` 检查你的登录状态，再检查模型名称，然后重新运行。
+- **使用自己的终结点时出错**，例如错误信息中提到 `set-your-endpoint.invalid`，或者出现 `LLM judge failed: 401`：请参阅[使用你自己的终结点](#使用你自己的终结点)和[故障排除](../../reference/troubleshooting/)。
+
+## 使用你自己的终结点
+
+评审也可以不用 Copilot，而是在你自己的模型终结点上运行：如果你不想让评审占用你的 Copilot 计划，或者你的团队已经有用于评估的模型部署，这样做会很有用。你需要一个支持 Azure OpenAI v1 API 的终结点，例如在 Azure OpenAI 或 Microsoft Foundry 中部署的 GPT-5 系列模型（该系列支持 Responses API）。[模型访问与费用](../../start/model-access/#你自己的模型终结点可选)介绍了可选的方案。
+
+<Steps>
+
+1. 把终结点的基础 URL、密钥和部署名称分别填入 `LLM_BASE_URL`、`LLM_API_KEY` 和 `LLM_MODEL`：写在你的 `.env` 文件中，或者设为 Codespaces 机密。用一个小请求测试它们：
+
+   ```bash
+   ./scripts/check-setup.sh --ping
+   ```
+
+   最后几行应显示 `✔ HTTP 200 from <your deployment>` 以及模型的回复。
+
+2. 在两个评估文件中，于 `defaults` 下、`judge_timeout` 的下方添加一个 `judge_provider` 块。它告诉 Vally 把评审的请求发到哪里：
+
+   ```yaml
+     judge_provider:                           # bring your own key: where the judge's requests go
+       type: azure                             # Azure OpenAI-style API with an api-key header
+       baseUrl: ${JUDGE_BASE_URL=https://set-your-endpoint.invalid/openai/v1/}   # replaced by --param
+       wireApi: responses                      # use the Responses API
+       apiKeyEnv: LLM_API_KEY                  # the NAME of the variable that holds the key, never the key
+   ```
+
+   配置了 `judge_provider` 之后，`judge_model` 指的是你的终结点上的部署名称。
+
+3. 带上两个参数运行，它们分别填入终结点和部署名称：
+
+   ```bash
+   vally eval -e evals/judge-controls.eval.yaml \
+     --param JUDGE_BASE_URL="$LLM_BASE_URL" \
+     --param JUDGE_MODEL="$LLM_MODEL"
+   ```
+
+</Steps>
+
+- **密钥永远不会写进文件。** `apiKeyEnv` 指定的是环境变量的名称，Vally 在运行时从这个变量中读取密钥。评估文件会被提交和共享，而密钥绝不能这样。
+- **假的默认值是有意为之。** 有了 `https://set-your-endpoint.invalid/openai/v1/`，`vally lint` 在任何地方都能检查这个文件，即使是在没有终结点的 CI 中。如果你忘了加 `--param`，评审会失败，并报出一个提到 `set-your-endpoint.invalid` 的错误，而不会悄悄调用其他终结点。
+- **`scripts/catch-up.sh 5`** 会把两个文件恢复为使用 Copilot 的版本；之后请重新添加这个块。
+
+我们用一个兼容 Azure OpenAI 的终结点和 `gpt-5.6-luna` 测试过这种方式：判定结果与使用 Copilot 评审时相同。
+
+## 更进一步
+
+- 在评审的对照用例中再添加第五个：一个包含正确条目和概括句、但语气生硬不友好的答案。评审能发现吗？
+- 用 `--param JUDGE_MODEL=<model-id>` 试试另一个评审模型，比较它对四个对照用例的判定结果。它也和你的判断一致吗？
+- 使用自己的终结点时，厌倦了每次都输入 `--param`？Vally 还会从评估文件旁边的一个文件中读取参数。对于 `evals/judge-controls.eval.yaml`，请创建 `evals/judge-controls.eval.params.yaml`：
+
+  ```yaml
+  params:
+    JUDGE_BASE_URL: https://<your-resource>.openai.azure.com/openai/v1/
+    JUDGE_MODEL: <your-deployment>
+  ```
+
+  `.gitignore` 会把 `*.params.yaml` 文件排除在你的提交之外，这样你的终结点信息就不会公开。
+
+**下一步**：[练习 6：GitHub Copilot Evals](../lab-6-copilot-evals/)

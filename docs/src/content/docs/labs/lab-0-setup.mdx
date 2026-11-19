@@ -1,0 +1,268 @@
+---
+title: 'Lab 0: Set up and check'
+description: Check your tools and sign-in, run one tiny real eval, and learn where Vally keeps the results of a run, from the summary table to the agent's transcript and the dashboard.
+sidebar:
+  label: '0. Set up and check'
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import LabMeta from '../../../components/LabMeta.astro';
+import EvalMap from '../../../components/EvalMap.astro';
+import Pieces from '../../../components/Pieces.astro';
+
+<LabMeta time="20 minutes" cost="1 Copilot run" uses="Your Codespace or local terminal" />
+
+<figure class="illustration">
+  ![A developer desk: a laptop whose terminal shows a list of green checks and one large green check, an access key card on a lanyard plugged into the laptop, and an open toolbox whose tools each carry a green check tag. The small teal robot, the agent, waves hello.](../../../assets/labs/lab-0.jpg)
+  <figcaption>First, make sure the whole chain works: your tools, your sign-in and one tiny real run.</figcaption>
+</figure>
+
+Before you write a real eval, make sure the whole chain works: your terminal, the tools, your Copilot sign-in, and a real run. A problem found now costs a minute; found in Lab 3, it costs your momentum. Then take a first look at what a run leaves behind. You'll read results in every lab, and it's easiest to learn your way around while the run is tiny.
+
+<EvalMap
+  doing="Check your tools and sign-in, run one tiny real eval, and find your way around its results."
+  testing="Your setup: can Vally reach GitHub Copilot with your sign-in?"
+  checking="One code check: does the answer contain <code>READY</code>?"
+  task={{ text: 'Reply with the single word READY', state: 'new' }}
+  agent={{ text: 'GitHub Copilot, <code>claude-sonnet-5.5</code>', state: 'new' }}
+  environment={{ text: 'An empty, fresh workspace' }}
+  trials={{ text: '1', state: 'new' }}
+  checks={{ text: '<code>output-contains</code> on the answer', state: 'new' }}
+  results={{ text: 'Run folder, trial record, dashboard', state: 'new' }}
+/>
+
+## The pieces you'll work with
+
+<Pieces
+  items={[
+    { term: 'Vally CLI', def: 'The command-line tool that runs evals: <code>vally lint</code> checks an eval file, <code>vally eval</code> runs it, <code>vally serve</code> shows the results in your browser.', analogy: 'the test runner', where: 'every <code>vally …</code> command', isNew: true },
+    { term: 'Eval file', def: 'A YAML file that describes an eval: what to ask, which agent to run, and how to check the answer.', analogy: 'a test file', where: '<code>lab-files/lab-0/setup-check.eval.yaml</code>', isNew: true },
+    { term: 'Executor', def: 'The part of Vally that runs the agent. <code>copilot-sdk</code> runs GitHub Copilot as the agent under test.', analogy: 'the driver that starts the program you test', where: '<code>executor: copilot-sdk</code>', isNew: true },
+    { term: 'Copilot sign-in', def: 'The token that lets Vally send requests to Copilot for you: your Codespace\'s own <code>GITHUB_TOKEN</code>, or, on your computer, <code>COPILOT_GITHUB_TOKEN</code>, which <code>.env</code> reads from your GitHub CLI sign-in.', analogy: 'the badge the test runner shows at the door', where: 'the <strong>GitHub Copilot sign-in</strong> lines of <code>check-setup.sh</code>', isNew: true },
+    { term: 'Run folder', def: 'Everything one <code>vally eval</code> saved: a summary table, one record per trial, and one folder per trial.', analogy: 'the test report', where: '<code>vally-results/&lt;date-and-time&gt;/</code>', isNew: true },
+    { term: 'Trial record', def: 'One line of <code>results.jsonl</code> per trial: the agent\'s final answer, its transcript, its metrics and the verdict of every check, with evidence.', analogy: 'the flight recorder of one run', where: '<code>results.jsonl</code> in the run folder', isNew: true },
+    { term: 'Dashboard', def: 'Vally\'s results viewer in the browser: pass rates, checks and metrics for every run, side by side.', analogy: 'the test report as a web page', where: '<code>vally serve</code>, port 3200', isNew: true },
+  ]}
+/>
+
+## Steps
+
+<Steps>
+
+1. Open your copy of the starter repository in VS Code: your Codespace (see [Set up in a Codespace](../../start/codespaces/)), or your clone on your computer. Open a terminal with **Terminal** > **New Terminal**. Every command in the labs runs there, in the repository's root folder. On your computer, load your settings into the new terminal first: `set -a; source .env; set +a`.
+
+2. Check your tools and settings:
+
+   ```bash
+   ./scripts/check-setup.sh
+   ```
+
+   The script asks each tool for its version, looks for your Copilot sign-in (without showing the token), and reads the model names from the eval files. It sends nothing anywhere; open `scripts/check-setup.sh` to see how it does that.
+
+   Every line under **Tools** and under **GitHub Copilot sign-in** needs a green check mark. Under **Your own model endpoint**, "Not set, and not needed" is fine: the LLM judge in Lab 5 runs on your Copilot plan unless you set up your own endpoint. If something is red, the line tells you what to do.
+
+3. Open the eval you're about to run, `lab-files/lab-0/setup-check.eval.yaml`:
+
+   ```yaml title="lab-files/lab-0/setup-check.eval.yaml"
+   # Lab 0: one tiny real run. It proves that Vally can reach GitHub Copilot with your sign-in.
+   # It uses one Copilot request. Run it with:
+   #   vally eval -e lab-files/lab-0/setup-check.eval.yaml
+   name: setup-check
+   description: One small real run that checks that the agent under test (GitHub Copilot) answers.
+   defaults:
+     executor: copilot-sdk     # the agent under test: GitHub Copilot, driven through the Copilot SDK
+     model: claude-sonnet-5.5  # pinned, so results are comparable (scripts/use-model.sh changes it)
+     runs: 1                   # one trial is enough for a connection check
+     timeout: 120s
+   stimuli:
+     - name: says-ready
+       prompt: Reply with the single word READY and nothing else. Do not use any tools.
+       graders:
+         - type: output-contains
+           name: answer-says-ready
+           config: { substring: READY }
+   ```
+
+   It asks Copilot to answer with one word, and one check passes if the answer contains `READY`. You'll learn every line in the next labs.
+
+4. Run it:
+
+   ```bash
+   vally eval -e lab-files/lab-0/setup-check.eval.yaml
+   ```
+
+   After 20 to 40 seconds, you see:
+
+   ```text
+   Loaded 1 stimulus from setup-check
+
+   Summary
+     PASS  setup-check
+
+   Saved  /workspaces/agent-evals-workshop-starter/vally-results/2026-11-19T07-11-30-365Z/
+   Run ID  5c8e4af2-5b94-4a6c-a945-217eb8ae243a
+   ```
+
+   Your folder name and run ID differ: they're the date and time of your run, and a random ID. On your computer, the path starts with your clone's folder. The first time you run Vally, it also prints a short notice about usage telemetry, with how to opt out (`VALLY_TELEMETRY_OPTOUT=1`).
+
+</Steps>
+
+## Find your way around the results
+
+`PASS` is the headline. To judge a run yourself, you need the details behind it: what the agent answered, what it did, and why each check decided the way it did. Vally saved all of that in the run folder.
+
+<Steps>
+
+1. In the Explorer, expand `vally-results`, then your run's folder, and the folders inside it:
+
+   ```text
+   vally-results/
+   └── 2026-11-19T07-11-30-365Z/           one folder per run, named after its start time
+       ├── eval-results.md                 the summary table, for people
+       ├── results.jsonl                   one record per trial: answer, transcript, metrics, verdicts
+       ├── otel-spans.jsonl                timing data for tracing tools; you can ignore it
+       └── setup-check/                    the eval
+           └── says-ready/                 the stimulus, that is, the task
+               └── claude-sonnet-5.5/      the model
+                   └── 0/                  the trial; trial folders count from 0
+                       ├── events.jsonl    Copilot's own, complete event log of the trial
+                       ├── metadata.json   the trial's settings and status
+                       └── workspace.patch every change the agent made to its files
+   ```
+
+2. **The summary.** Right-click `eval-results.md` and select **Open Preview**. It has one row per stimulus: the checks with how many trials passed them, the pass rate, the duration, the tokens, the turns, the tool calls and the verdict. Here: `answer-says-ready 1/1`, about 20,000 tokens, 1 turn, 0 tool calls.
+
+3. **The trial record.** In the terminal, put the path of your newest run into a variable:
+
+   ```bash
+   RUN=$(ls -d vally-results/*/ | tail -1)
+   ```
+
+   Run folders are named after their start time, so the last one in the list is the newest. The next commands use `$RUN`; in a new terminal, set it again.
+
+   `results.jsonl` has one line per trial, with `"type": "trial-result"`, and a last line that summarizes the run. Each line is a JSON object; `jq` picks the trial and shows a few of its fields:
+
+   ```bash
+   jq 'select(.type == "trial-result") | {stimulus, answer: .trajectory.output, passed: .gradeResult.passed, score: .gradeResult.score}' "$RUN/results.jsonl"
+   ```
+
+   ```json
+   {
+     "stimulus": "says-ready",
+     "answer": "READY",
+     "passed": true,
+     "score": 1
+   }
+   ```
+
+   `.trajectory` holds what the agent did; `.gradeResult` holds what the checks decided.
+
+4. **The transcript.** Everything that happened during the trial is a list of events in `.trajectory.events`. List their types, in order:
+
+   ```bash
+   jq -r 'select(.type == "trial-result") | .trajectory.events[].type' "$RUN/results.jsonl"
+   ```
+
+   ```text
+   user_message
+   turn_start
+   token_usage
+   assistant_message
+   turn_end
+   ```
+
+   Your prompt (`user_message`), then one turn of the agent: the tokens that turn used, and the agent's message. There's no `tool_call` event: the agent answered without using a tool, as the prompt asked.
+
+5. **The tokens.** Look at the `token_usage` event:
+
+   ```bash
+   jq -c 'select(.type == "trial-result") | .trajectory.events[] | select(.type == "token_usage") | .data | {inputTokens, outputTokens}' "$RUN/results.jsonl"
+   ```
+
+   ```json
+   {"inputTokens":20292,"outputTokens":4}
+   ```
+
+   About 20,000 tokens in, 4 tokens out, for the word READY. The input is mostly the agent's standard instructions and the descriptions of its tools, which go along with every request. Keep that in mind when you estimate what evals cost.
+
+6. **The verdict, with its evidence.** Every check reports whether it passed and why:
+
+   ```bash
+   jq 'select(.type == "trial-result") | .gradeResult.details[] | {name, passed, evidence}' "$RUN/results.jsonl"
+   ```
+
+   ```json
+   {
+     "name": "answer-says-ready",
+     "passed": true,
+     "evidence": "'READY' found in output"
+   }
+   ```
+
+7. **The trial folder.** In the Explorer, open the trial's `workspace.patch`: it's empty, because the agent changed no files. Open `metadata.json`: `"status": "success"` means the trial ran to the end. A trial that broke off, for example because of a connection problem, says `"error"` there.
+
+</Steps>
+
+You've now seen the three levels you'll use in every lab: the **summary** (is it good?), the **trial record** (what did the agent answer and do, and why did each check decide that way?) and the **trial folder** (what changed in the workspace?). `events.jsonl` in the trial folder is Copilot's own, more detailed log of the same trial; you'll rarely need it.
+
+## The dashboard
+
+The dashboard shows the same results in your browser, for all your runs at once. Start it now, and come back to it after every lab.
+
+<Steps>
+
+1. Open a second terminal with the **+** in the terminal panel, so the dashboard can keep running there. Start it:
+
+   ```bash
+   vally serve vally-results --port 3200 --allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+   ```
+
+   `--allowed-host` lets the address of your Codespace's forwarded port reach the dashboard. On your computer, those two variables are empty, and the option changes nothing.
+
+2. Open it. In a Codespace, a notification offers **Open in Browser** for port 3200; you also find the port in the **Ports** panel. On your computer, open `http://localhost:3200`.
+
+3. Look around. At the top, one button per run, named like its folder; select yours. Below, the pass rate, the number of outcomes (trials) and the tokens. Scroll down to **All outcomes** and expand your trial with **▾**: its duration, turns, tool calls and tokens, and each check with its score.
+
+   ![The Vally dashboard after Lab 0. At the top, the run's button, then 100% pass rate, 1 outcome, the model claude-sonnet-5.5, 2.9 seconds and 20.3k tokens. Below, under All outcomes, the expanded trial says-ready: Pass, 1 turn, 0 tool calls, 20.3k input tokens and 4 output tokens, and the check answer-says-ready with the score 1.00.](../../../assets/screens/lab-0-dashboard.jpg)
+
+</Steps>
+
+The dashboard reads the results folder when it starts. **After each lab, restart it** to see your new runs: select its terminal, press Ctrl+C, then the Up arrow and Enter.
+
+The dashboard shows *what* happened: verdicts, scores and metrics, for one run or several. The answers, the transcripts and the evidence, the *why*, are in `results.jsonl`. You'll use both.
+
+## What just happened
+
+Vally read the eval file, built a fresh, empty workspace, started GitHub Copilot in it with your token, and sent the prompt. Copilot answered `READY` without using any tools. Then Vally ran the one check, found `READY` in the answer, and saved everything in a new run folder: the summary table, one trial record, and the trial's folder.
+
+## Check yourself
+
+<details>
+<summary>What would have happened if your token were wrong?</summary>
+
+The run would end with `ERROR` and `Not authenticated. Please authenticate first.` instead of a PASS or FAIL. Vally separates the two: a FAIL means the agent ran and a check failed; an error means the run itself couldn't happen. With an error, `vally eval` exits with code 1, and the trial's `metadata.json` says `"status": "error"`.
+
+</details>
+
+<details>
+<summary>Why does a four-token answer use about 20,000 tokens?</summary>
+
+Every request to the agent includes its standard instructions and the descriptions of all of its tools. Your prompt is a tiny part of that. Longer tasks add the files the agent reads, its tool calls and its answers. The `token_usage` events in the transcript show the count for each turn.
+
+</details>
+
+<details>
+<summary>Where do you look to find out what the agent answered?</summary>
+
+In the trial record: `.trajectory.output` in the trial's line of `results.jsonl`. The summary table and the dashboard show only the verdicts and the numbers.
+
+</details>
+
+## Stuck?
+
+- **`check-setup.sh` says `No sign-in found`, or `vally eval` reports `Not authenticated. Please authenticate first.`**: in a Codespace, open a new terminal and try again. On your computer, run `gh auth login`, then `set -a; source .env; set +a` again. Still failing? Give Vally a token of its own: see **If Lab 0 can't sign in** in [Set up in a Codespace](../../start/codespaces/#if-lab-0-cant-sign-in) or [Set up on your computer](../../start/local/#if-lab-0-cant-sign-in).
+- **The model isn't available** on your plan: start `copilot`, type `/model` to see your models, and `/exit`. The agent's model is the `model:` line in each eval file. `./scripts/use-model.sh <model-id>`, for example `./scripts/use-model.sh gpt-5.6-luna`, changes that line in every eval file of the workshop, so the later labs use the new model too. Then run the eval again.
+- **The dashboard says `No runs found`**: start it from the repository's root folder, after at least one run, and keep the folder name `vally-results`.
+- More in [Troubleshooting](../../reference/troubleshooting/).
+
+**Next:** [Lab 1: Define good](../lab-1-define-good/)

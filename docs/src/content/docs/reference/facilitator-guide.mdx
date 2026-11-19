@@ -1,0 +1,59 @@
+---
+title: "Facilitator guide"
+description: "How to prepare, run and follow up the workshop: preparation checklist, timing, talking points per block, and the questions participants ask most."
+---
+
+This page is for whoever leads the workshop. Participants can skip it.
+
+## Two weeks before
+
+- **Test the whole path yourself in a fresh copy of the starter repository**, in a Codespace, with a participant's permissions: Labs 0 to 6, including the GitHub Copilot Evals plugin. Preview tools change quickly; the labs were tested with Vally 0.21.0 in November 2026.
+- **Check the starter repository against the site** with `tools/verify-starter.sh` from this site's repository (see its README). It needs no model and no credentials.
+- **Check the participants' Copilot plans.** Business and Enterprise organizations must allow Copilot CLI. If many participants come from one organization, ask its administrator early. The labs pin two Copilot models: `claude-sonnet-5.5` for the agent and `gpt-5.6-luna` for the judge. Participants who don't have one of them switch with `./scripts/use-model.sh <model-id>` (the agent) or `--param JUDGE_MODEL=<model-id>` (the judge).
+- **Decide where the LLM judge runs.** By default, each participant's judge runs on their own Copilot plan, like the agent, so there are no keys to hand out. If you prefer to pay for judging centrally, give participants an endpoint, a short-lived key and the deployment name of a GPT-5-family model, for example an Azure OpenAI or Microsoft Foundry deployment, and point them to [your own model endpoint](../../start/model-access/#your-own-model-endpoint-optional). Test it first with `./scripts/check-setup.sh --ping`, and plan for about 11 judge calls per participant in Lab 5. Never share long-lived or admin keys.
+- **Send the "Before the workshop" list** from the [overview](../../start/overview/#before-the-workshop): a Copilot plan, a copy of the starter repository, a Codespace (or a local setup signed in with `gh auth login`), the check script.
+
+## On the day
+
+- Have the site and your own Codespace open.
+- If you provide a central judge endpoint, hand out the endpoint, the keys and the deployment name before Lab 5, and have participants test them with `./scripts/check-setup.sh --ping`.
+- Keep `scripts/catch-up.sh` in mind: anyone who falls behind can jump to the end of any lab and carry on.
+
+## Timing and talking points
+
+| Time | Block | Say | Watch for |
+| --- | --- | --- | --- |
+| 0:00 | Welcome | "Evals turn 'looks good' into a check you can repeat." Show the running example and its bug. | Late arrivals: start their Codespace now. |
+| 0:05 | Lab 0 | One real run proves the whole chain. | Sign-in problems ([If Lab 0 can't sign in](../../start/codespaces/#if-lab-0-cant-sign-in)); missing models: `./scripts/use-model.sh <model-id>` switches every eval file, while `--model` covers only one run. |
+| 0:15 | Primer | An eval is a test for output that can change. Walk through one trial on [Anatomy](../../concepts/anatomy/). | Keep it to 15 minutes; the labs teach the rest. |
+| 0:30 | Lab 1 | Define good before the first run. Let two people argue about answer B. | People who skip writing criteria. |
+| 0:40 | Lab 2 | Predict before running. The wrong answer passes: that's the moment. Explain why the eval "fails" in step 5 and why that's right. | Indentation errors; duplicate grader names. |
+| 0:55 | Lab 3 | Read answers, not only pass rates. Two kinds of failure, one cause. | Slow first runs; authentication errors. |
+| 1:15 | Lab 4 | One change, proven. Point at the identical eval hashes in the dry run. | Edits to the wrong bullet; use the diff. |
+| 1:30 | Lab 5 | A judge is a grader too: calibrate it. The disagreement goes both ways. | A judge model that isn't on a participant's plan: `--param JUDGE_MODEL=<model-id>`. With a central endpoint: 401 (expired key), 429 (busy endpoint). |
+| 1:45 | Lab 6 | Copilot drafts, you judge. Use the review checklist. | Approval prompts (two per action, about three minutes each); in a Codespace, the sign-in in step 2; the runner setup in step 3; organization plugin policies. |
+| 2:00 | Wrap-up | Point to Labs 7 to 9 and Further learning. If you handed out keys, say when they expire. | |
+
+If you run short of time, shorten Lab 6 to install and one review, and leave the rest for home.
+
+## Questions participants ask
+
+**Why the mock executor?** It returns the prompt as the answer, so you can feed known answers to your checks: free, instant, deterministic, and any wrong verdict is the check's fault. It's the documented best practice. See [Graders: why the mock executor](../../concepts/graders/#why-the-mock-executor).
+
+**Do we need specific models? Is this deterministic?** No and no. The labs pin models so results are comparable, and use three trials because agents vary. Without `claude-sonnet-5.5`, run `./scripts/use-model.sh <model-id>` once; without `gpt-5.6-luna`, add `--param JUDGE_MODEL=<model-id>` to the judged runs. Code checks and the mock executor are deterministic. See [Model access](../../start/model-access/#pinned-models-comparable-not-deterministic).
+
+**Why did my neighbor's run pass and mine fail?** Variation between trials. Compare which checks failed and read the answers.
+
+**What's the difference between Vally and GitHub Copilot Evals?** Vally is the engine; GitHub Copilot Evals is the assistant on top, and its runs happen in Vally. See [the tools](../../concepts/tools/).
+
+**Why a different model as the judge?** Self-preference: a model rates its own family's output more kindly. In the labs, a GPT model judges a Claude model.
+
+**Do I need an API key?** No. The agent and the judge both run on GitHub Copilot, with your Copilot sign-in. You need a key only if you use your own model endpoint: it goes into an environment variable (a Codespaces secret or `.env`), and the eval file only names the variable.
+
+**How do I continue at home?** Your Codespace and your copy of the starter repository stay yours, and the judge keeps running on your Copilot plan. If you judged with a key from the workshop, delete the `judge_provider` block from your eval files when the key expires, and the judge runs on Copilot again.
+
+## After the workshop
+
+- Remind participants to stop or delete their Codespaces, and to delete any personal access token they created for the labs.
+- If you handed out keys for a central judge endpoint, revoke them.
+- Collect feedback, and open issues for anything that broke.

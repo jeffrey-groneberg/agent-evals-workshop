@@ -1,0 +1,175 @@
+---
+title: Vally 速查表
+description: 工作坊中用到的 Vally 命令、评估文件字段、评分器、结果文件和 jq 代码片段，汇总在一页中。
+---
+
+所有命令均以 Vally 0.21.0 为准。完整参考：[Vally 文档](https://microsoft.github.io/vally/)。
+
+## 命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `vally lint -e <file-or-folder> --strict` | 检查评估（eval）文件，但不运行；`--strict` 会把警告视为错误 |
+| `vally lint` | 检查当前文件夹中的技能（skill，即 `SKILL.md` 文件） |
+| `vally eval -e <file>` | 运行一个评估 |
+| `vally eval --suite <name>` | 运行 `.vally.yaml` 中定义的一个套件 |
+| `vally eval … --runs 5` | 覆盖试验次数 |
+| `vally eval … --model <id>` | 覆盖智能体所用的模型 |
+| `vally eval … --param KEY=value` | 为 `${KEY}` 占位符填入值 |
+| `vally eval … --verbose` | 额外输出每个失败试验的答案、轮次、工具调用和 token 数 |
+| `vally eval … --require-pass` | 判定结果为失败时返回退出代码 1（用于 CI） |
+| `vally eval … --output-dir <dir>` | 将结果保存到其他位置 |
+| `vally experiment run <file> --dry-run` | 显示实验的执行计划，但不运行 |
+| `vally experiment run <file>` | 运行一个实验 |
+| `vally experiment run <file> --param KEY=value` | 为实验中各评估的 `${KEY}` 占位符填入值 |
+| `vally serve <folder> --port 3200` | 为一个结果文件夹打开结果仪表板：`vally-results`，或某个实验的文件夹。它在启动时读取该文件夹。在 Codespace 中，需要加上 `--allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"` |
+| `vally grade -e <file> < results.jsonl` | 重新为已保存的试验评分，无需再次运行智能体 |
+| `vally compare` | 用 LLM 评审逐对比较两次运行（会消耗 token） |
+
+`vally eval` 的退出代码：只要运行完成就返回 `0`，无论判定结果是通过还是失败；出错时返回 `1`，使用 `--require-pass` 且判定结果为失败时也返回 `1`。
+
+## 评估文件
+
+```yaml
+name: my-eval                      # required
+description: What good looks like.
+type: capability                   # or regression (expects a baseline configuration)
+tags: { lane: ci }                 # for suites
+defaults:
+  executor: copilot-sdk            # or mock (no model)
+  model: claude-sonnet-5.5
+  runs: 3                          # trials per stimulus
+  timeout: 120s                    # per trial; unit required
+  judge_model: gpt-5.6-luna        # for prompt graders: a Copilot model, or your deployment's name
+  judge_timeout: 2m
+  judge_provider:                  # optional: your own judge endpoint instead of Copilot
+    type: azure                    # openai | azure | anthropic
+    baseUrl: ${JUDGE_BASE_URL=https://set-your-endpoint.invalid/openai/v1/}
+    wireApi: responses             # or completions
+    apiKeyEnv: LLM_API_KEY         # the variable's NAME, never the key
+agent_environment:
+  skills: [../.github/skills/my-skill]          # relative to this file
+  files:
+    - { src: ../data.json, dest: data.json }
+scoring:
+  threshold: 1                     # every grader must pass
+stimuli:
+  - name: typical-request          # unique
+    prompt: The request a real user would type.
+    rubric:                        # for prompt graders
+      - One criterion per line.
+    graders:
+      - { type: output-contains, name: must-mention, config: { substring: X } }
+      - { type: output-contains, name: must-not-mention, config: { substring: Y, negate: true } }
+```
+
+## 工作坊中用到的评分器
+
+| 类型 | 检查什么 | 配置 |
+| --- | --- | --- |
+| `output-contains` | 最终答案包含某段文本（不区分大小写） | `substring`, `negate` |
+| `skill-invocation` | 运行记录（transcript）显示该技能已被调用 | `required: [skill-name]` |
+| `file-contains` | 试验结束后，工作区中的某个文件包含指定的值 | `path`, `value` |
+| `prompt` | LLM 评审依据任务（stimulus）的评分标准（`rubric`）进行评判 | `scoring` (`binary`, `scale_1_5`, `scale_1_10`), `threshold`, `evidence` |
+
+评分器名称在整个文件中必须唯一。更多评分器：[评分器参考](https://microsoft.github.io/vally/reference/graders/)。
+
+## 参数
+
+参数（param）是 `${KEY}` 形式的占位符，按以下顺序取值：首先是命令行上的 `--param KEY=value`；其次是评估文件旁边的参数文件（`<name>.eval.params.yaml`）或 `.vally.yaml` 中的 `params`；最后是内联默认值 `${KEY=default}`。如果需要字面意义上的 `${…}`，请写成 `$${…}`。`my.eval.yaml` 的参数文件名为 `my.eval.params.yaml`，其中包含一个 `params` 键：
+
+```yaml
+params:
+  JUDGE_BASE_URL: https://<your-resource>.openai.azure.com/openai/v1/
+```
+
+## 实验文件
+
+```yaml
+name: my-experiment
+evals: [../evals/my.eval.yaml]     # relative to this file
+vary: [/defaults/model]            # what may differ; anything else is an error
+baseline: a
+variants:
+  a: { overrides: { model: claude-sonnet-5.5 } }
+  b: { overrides: { model: gpt-5.6-luna } }
+```
+
+变体可以覆盖 `runs`、`timeout`、`model`、`executor`、`judge_model`、`judge_provider` 等设置，以及环境中的 `skills`、`files` 和 `env`。如果要让各变体使用不同的技能，请使用 `vary: [/environment/skills]`。
+
+## 结果
+
+每次执行 `vally eval` 都会保存一个运行文件夹：
+
+```text
+vally-results/
+└── <date-and-time>/                     one folder per run
+    ├── eval-results.md                  the summary table: checks, pass rate, pass@k, pass^k, duration, tokens, tool calls
+    ├── results.jsonl                    one "trial-result" line per trial, plus a "run-summary" line
+    └── <eval>/<stimulus>/<model>/<n>/   one folder per trial, counting from 0
+        ├── events.jsonl                 Copilot's own event log, with the model's reasoning summary
+        ├── metadata.json                the trial's settings and status: success or error
+        └── workspace.patch              every change the agent made to its files; empty: none
+```
+
+实验会保存 `vally-experiment-results/<date-and-time>/report.md`，其中每个变体对应一张表；此外，每个变体还有一个子文件夹，各自包含自己的 `results.jsonl` 和试验文件夹。
+
+`results.jsonl` 中每个试验对应一行，其字段如下：
+
+| 字段 | 内容 |
+| --- | --- |
+| `stimulus`, `trialIndex` | 哪个任务、第几次试验（从 0 开始） |
+| `status`, `error` | `success`；如果试验没有完成，则为 `error` 及错误消息 |
+| `trajectory.output` | 智能体的最终答案 |
+| `trajectory.events` | 运行记录：先是 `user_message`，然后是每一轮的 `token_usage`、`assistant_message`、`tool_call`、`tool_result`、`skill_activation` |
+| `trajectory.metrics` | 轮次、工具调用、token 数、耗时 |
+| `gradeResult` | `passed`、`score`，以及 `details` 中每个检查项的 `name`、`graderType`、`passed` 和 `evidence`（对于评审，即它的推理过程） |
+
+## 仪表板
+
+```bash
+vally serve vally-results --port 3200 --allowed-host "${CODESPACE_NAME}-3200.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+```
+
+在单独的终端中启动它，然后打开端口 3200。它会显示通过率、产出结果、各项指标，以及每个试验的各个检查项及其分数；**Model comparison** 可以并排比较两次运行。它不显示答案、运行记录或证据：这些内容在 `results.jsonl` 中。它在启动时读取文件夹，所以每次运行后都要重启它（按 Ctrl+C，然后按向上箭头键和 Enter 键）。对于实验，请改为指定该实验的文件夹：`vally serve "$(ls -d vally-experiment-results/*/ | tail -1)" --port 3200 …`。
+
+## jq 代码片段
+
+```bash
+RUN=$(ls -d vally-results/*/ | tail -1)          # the newest run folder
+
+# Each trial: answer, verdict, score
+jq 'select(.type == "trial-result") | {stimulus, answer: .trajectory.output, passed: .gradeResult.passed, score: .gradeResult.score}' "$RUN/results.jsonl"
+
+# Each check with its evidence
+jq 'select(.type == "trial-result") | .gradeResult.details[] | {name, passed, evidence}' "$RUN/results.jsonl"
+
+# The judge's verdict and reasoning
+jq -r 'select(.type == "trial-result") | .stimulus as $s | .gradeResult.details[] | select(.graderType == "prompt") | "\($s): \(if .passed then "pass" else "fail" end)\n  \(.evidence)"' "$RUN/results.jsonl"
+
+# Trial 1's transcript: event types, tool calls, the skill as the agent received it, the tokens per turn
+jq -r 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[].type' "$RUN/results.jsonl"
+jq -r 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[] | select(.type == "tool_call") | "\(.data.toolName): \(.data.arguments)"' "$RUN/results.jsonl"
+jq -r 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[] | select(.type == "skill_activation") | .data.content' "$RUN/results.jsonl"
+jq -c 'select(.type == "trial-result" and .trialIndex == 0) | .trajectory.events[] | select(.type == "token_usage") | .data | {inputTokens, outputTokens}' "$RUN/results.jsonl"
+
+# Trial 1's reasoning, from Copilot's own log
+jq -r 'select(.type == "assistant.message") | .data.reasoningText // empty' "$RUN"*/*/*/0/events.jsonl
+
+# Trials that didn't finish, with their error
+jq -r 'select(.type == "trial-result" and .status == "error") | "\(.stimulus): \(.error)"' "$RUN/results.jsonl"
+
+# Trials that changed files
+find "$RUN" -name workspace.patch -size +0
+```
+
+## 起始存储库中的辅助脚本
+
+每个脚本做的事你也可以手动完成；打开脚本就能看到具体做法。
+
+| 脚本 | 作用 |
+| --- | --- |
+| `scripts/check-setup.sh [--ping]` | 查询每个工具的版本，查找你的 Copilot 登录和设置（但不显示它们），并从评估文件中读取模型名称。使用 `--ping` 时：向你自己的终结点发送一个小请求 |
+| `scripts/answers.sh [--tools] [run-folder]` | 对最新的运行（或你指定的文件夹）执行上面的 `jq` 查询，输出每个试验的判定结果、答案、工具调用和检查项，并附上失败检查项的证据以及所有评审的证据 |
+| `scripts/use-model.sh [<model-id>]` | 不带参数时，列出每个评估文件中智能体的 `model:` 行；带参数时，改写这些行 |
+| `scripts/catch-up.sh 2\|3\|4\|5\|7` | 把你的文件更新到该练习结束时的状态，以便开始下一个练习：它会把 `solutions/` 和 `lab-files/` 中已完成的文件复制到对应位置。会被改动的文件会先复制到 `.catch-up-backup/<time>/` |
