@@ -1,7 +1,10 @@
 ---
 // "At a glance": where a lab works in an eval. The same seven stages appear on every lab, so readers see
-// what's new, what changes and what isn't used yet. Text props may contain inline HTML such as <code>.
+// what's new, what changes and what isn't used yet. A pill compares a stage with the earlier labs: "new"
+// the first time the stage is used (after Lab 0, only the judge), "changed" when it's different from before.
+// Lab 0 has no pills. Text props may contain inline HTML such as <code>.
 import { Icon } from '@astrojs/starlight/components';
+import PillKey from './PillKey.astro';
 
 type State = 'new' | 'on' | 'changed' | 'off';
 interface Stage {
@@ -61,7 +64,10 @@ const stages = order.map(([key, icon]) => {
 ---
 
 <figure class="eval-map not-content">
-	<figcaption class="eval-map-title">{t.title}</figcaption>
+	<figcaption class="eval-map-title">
+		<span class="eval-map-title-text">{t.title}</span>
+		<PillKey states={stages.map((stage) => stage.state)} />
+	</figcaption>
 	<dl class="eval-map-summary">
 		<div><dt>{t.doing}</dt><dd set:html={props.doing} /></div>
 		<div><dt>{t.testing}</dt><dd set:html={props.testing} /></div>
@@ -85,7 +91,7 @@ const stages = order.map(([key, icon]) => {
 
 <style>
 	.eval-map {
-		--eval-peach: #d9773f;
+		--eval-peach: var(--ws-peach);
 		container-type: inline-size;
 		margin: 1.5rem 0 2rem;
 		padding: 1rem 1.1rem 1.1rem;
@@ -94,7 +100,11 @@ const stages = order.map(([key, icon]) => {
 		background: color-mix(in srgb, var(--sl-color-accent-low) 35%, transparent);
 	}
 	.eval-map-title {
-		margin: 0 0 0.6rem;
+		display: grid;
+		gap: 0.4rem;
+		margin: 0 0 0.75rem;
+	}
+	.eval-map-title-text {
 		font-size: var(--sl-text-xs);
 		font-weight: 700;
 		letter-spacing: 0.06em;

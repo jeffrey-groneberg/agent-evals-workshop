@@ -26,10 +26,10 @@ import RunDiagram from '../../../../components/RunDiagram.astro';
   checking="5 个代码检查项：3 个检查答案，1 个检查运行记录，1 个检查工作区"
   task={{ text: '根据 <code>backlog.json</code> 编写发布说明' }}
   agent={{ text: 'GitHub Copilot，<code>claude-sonnet-5.5</code>' }}
-  environment={{ text: '技能和 <code>backlog.json</code>，每次试验都重新准备', state: 'new' }}
-  trials={{ text: '3 次，并行运行', state: 'new' }}
-  checks={{ text: '答案、运行记录和工作区', state: 'new' }}
-  results={{ text: '仪表板、试验记录、Copilot 的日志', state: 'new' }}
+  environment={{ text: '技能和 <code>backlog.json</code>，每次试验都重新准备', state: 'changed' }}
+  trials={{ text: '3 次，并行运行', state: 'changed' }}
+  checks={{ text: '答案、运行记录和工作区', state: 'changed' }}
+  results={{ text: '仪表板、试验记录、Copilot 的日志', state: 'changed' }}
 />
 
 <RunDiagram
@@ -43,11 +43,11 @@ import RunDiagram from '../../../../components/RunDiagram.astro';
   ]}
   steps={[
     { from: 'you', to: 'vally', text: '启动运行', detail: '评估文件要求进行三次试验：<code>runs: 3</code>。' },
-    { from: 'vally', text: '创建全新的工作区', detail: '技能和 <code>backlog.json</code> 的副本，每次试验都是新的。', state: 'new' },
+    { from: 'vally', text: '创建全新的工作区', detail: '技能和 <code>backlog.json</code> 的副本，每次试验都是新的。', state: 'changed' },
     { from: 'vally', to: 'agent', text: '发送提示词', detail: '“Write the release notes for this release from backlog.json.”' },
     { from: 'agent', text: '完成工作', detail: '调用技能，读取 <code>backlog.json</code>，写出发布说明。运行记录（transcript）会记下每一步。', state: 'new' },
     { from: 'agent', to: 'vally', text: '回答', detail: 'Vally 保留答案、运行记录和工作区。' },
-    { from: 'vally', to: 'checks', text: '交出证据', detail: '三项检查读取答案，一项读取运行记录，一项读取工作区。', state: 'new' },
+    { from: 'vally', to: 'checks', text: '交出证据', detail: '三项检查读取答案，一项读取运行记录，一项读取工作区。', state: 'changed' },
     { from: 'checks', to: 'vally', text: '通过或失败，并附上证据', detail: '只有五项全部通过，这次试验才算通过：<code>threshold: 1</code>。' },
     { from: 'vally', to: 'results', text: '写入结果', detail: '<code>eval-results.md</code>、<code>results.jsonl</code>，以及每次试验一个文件夹。' },
   ]}

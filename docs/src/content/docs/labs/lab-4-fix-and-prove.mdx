@@ -29,7 +29,7 @@ You know the cause: the skill's first rule. Now you fix it, and then you prove t
   environment={{ text: 'The skill: <code>before</code> vs <code>after</code>', state: 'changed' }}
   trials={{ text: '3 per variant, 6 in all' }}
   checks={{ text: 'Answer, transcript and workspace, as in Lab 3' }}
-  results={{ text: 'Experiment comparison, <code>report.md</code>, dashboard', state: 'new' }}
+  results={{ text: 'Experiment comparison, <code>report.md</code>, dashboard', state: 'changed' }}
 />
 
 <RunDiagram
@@ -250,6 +250,33 @@ Refuse to run. The model isn't in `vary`, so a different model would be an undec
 <summary>0 of 3 before, 3 of 3 after. Is the fix proven for good?</summary>
 
 It's strong evidence for this task and this model, from six trials. It's not proof for every request a user might type, and not for future models. That's why you'll keep running the eval on every change, in CI, in Lab 7.
+
+</details>
+
+## Solution
+
+Compare your skill with ours. The highlighted lines are the two you write in step 1, in place of the rule that listed every backlog item.
+
+<details>
+<summary>The fixed skill</summary>
+
+```markdown title="solutions/lab-4/SKILL.md" ins={10-11}
+---
+name: release-notes
+description: Drafts release notes for the next release from the project backlog in backlog.json. Use when asked to write, draft or update release notes.
+---
+
+# Release notes
+
+Read `backlog.json` in the project root and draft the release notes for the next release.
+
+- Include only items whose `status` is `done`. Leave every other item out and do not mention it anywhere in the notes.
+- List each included item as one bullet formatted as `- ID: title`.
+- Start with one short sentence that summarizes the release.
+- Keep the tone friendly and short. Do not edit any files.
+```
+
+[Open it on GitHub](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter/blob/main/solutions/lab-4/SKILL.md)
 
 </details>
 

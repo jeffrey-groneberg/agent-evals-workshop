@@ -26,10 +26,10 @@ Your checks work. Now they meet the real agent: GitHub Copilot, with the release
   checking="Five code checks: three on the answer, one on the transcript, one on the workspace"
   task={{ text: 'Write the release notes from <code>backlog.json</code>' }}
   agent={{ text: 'GitHub Copilot, <code>claude-sonnet-5.5</code>' }}
-  environment={{ text: 'The skill and <code>backlog.json</code>, fresh for every trial', state: 'new' }}
-  trials={{ text: '3, in parallel', state: 'new' }}
-  checks={{ text: 'Answer, transcript and workspace', state: 'new' }}
-  results={{ text: 'Dashboard, trial records, Copilot\'s log', state: 'new' }}
+  environment={{ text: 'The skill and <code>backlog.json</code>, fresh for every trial', state: 'changed' }}
+  trials={{ text: '3, in parallel', state: 'changed' }}
+  checks={{ text: 'Answer, transcript and workspace', state: 'changed' }}
+  results={{ text: 'Dashboard, trial records, Copilot\'s log', state: 'changed' }}
 />
 
 <RunDiagram
@@ -43,11 +43,11 @@ Your checks work. Now they meet the real agent: GitHub Copilot, with the release
   ]}
   steps={[
     { from: 'you', to: 'vally', text: 'Starts the run', detail: 'The eval file asks for three trials: <code>runs: 3</code>.' },
-    { from: 'vally', text: 'Builds a fresh workspace', detail: 'A copy of the skill and of <code>backlog.json</code>, new for every trial.', state: 'new' },
+    { from: 'vally', text: 'Builds a fresh workspace', detail: 'A copy of the skill and of <code>backlog.json</code>, new for every trial.', state: 'changed' },
     { from: 'vally', to: 'agent', text: 'Sends the prompt', detail: '"Write the release notes for this release from backlog.json."' },
     { from: 'agent', text: 'Does the work', detail: 'Invokes the skill, reads <code>backlog.json</code>, writes the notes. The transcript records every step.', state: 'new' },
     { from: 'agent', to: 'vally', text: 'Answers', detail: 'Vally keeps the answer, the transcript and the workspace.' },
-    { from: 'vally', to: 'checks', text: 'Hands over the evidence', detail: 'Three checks read the answer, one the transcript, one the workspace.', state: 'new' },
+    { from: 'vally', to: 'checks', text: 'Hands over the evidence', detail: 'Three checks read the answer, one the transcript, one the workspace.', state: 'changed' },
     { from: 'checks', to: 'vally', text: 'Pass or fail, with evidence', detail: 'The trial passes only if all five pass: <code>threshold: 1</code>.' },
     { from: 'vally', to: 'results', text: 'Writes the results', detail: '<code>eval-results.md</code>, <code>results.jsonl</code> and one folder per trial.' },
   ]}

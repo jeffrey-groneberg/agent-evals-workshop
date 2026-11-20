@@ -29,7 +29,7 @@ import RunDiagram from '../../../../components/RunDiagram.astro';
   environment={{ text: '技能：<code>before</code> 对比 <code>after</code>', state: 'changed' }}
   trials={{ text: '每个变体 3 次，共 6 次' }}
   checks={{ text: '答案、运行记录（transcript）和工作区，与练习 3 相同' }}
-  results={{ text: '实验对比、<code>report.md</code>、仪表板', state: 'new' }}
+  results={{ text: '实验对比、<code>report.md</code>、仪表板', state: 'changed' }}
 />
 
 <RunDiagram
@@ -250,6 +250,33 @@ This release makes it easier to find things and gives the dashboard a darker loo
 <summary>修复前 3 次通过 0 次，修复后 3 次全部通过。这个修复就此一劳永逸地得到证明了吗？</summary>
 
 对于这个任务和这个模型来说，这是来自 6 次试验的有力证据。但它并不能证明用户可能输入的每一个请求都没问题，也不能证明对未来的模型同样有效。所以在练习 7 中，你会在 CI 中对每次变更持续运行这个评估。
+
+</details>
+
+## 参考答案
+
+把你的技能和我们的对照一下。高亮的两行就是你在第 1 步中写的，它们取代了原来那条列出所有待办事项的规则。
+
+<details>
+<summary>修复后的技能</summary>
+
+```markdown title="solutions/lab-4/SKILL.md" ins={10-11}
+---
+name: release-notes
+description: Drafts release notes for the next release from the project backlog in backlog.json. Use when asked to write, draft or update release notes.
+---
+
+# Release notes
+
+Read `backlog.json` in the project root and draft the release notes for the next release.
+
+- Include only items whose `status` is `done`. Leave every other item out and do not mention it anywhere in the notes.
+- List each included item as one bullet formatted as `- ID: title`.
+- Start with one short sentence that summarizes the release.
+- Keep the tone friendly and short. Do not edit any files.
+```
+
+[在 GitHub 上打开](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter/blob/main/solutions/lab-4/SKILL.md)
 
 </details>
 

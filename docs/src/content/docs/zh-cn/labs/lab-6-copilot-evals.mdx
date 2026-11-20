@@ -192,7 +192,7 @@ Copilot 并不自己运行评估：它把评估交给 Vally，通过两种运行
    - **哪些不受限制**：`A trusted full eval run has no tool-use restrictions and no OS, filesystem or network sandbox`，而且它使用的 GitHub 凭据对这次运行启动的每个进程都可见。
    - **结果保存在哪里**：`vally-results/<run>/<timestamp>`。
 
-   如果这些都符合你的预期，就批准。如果审核随后询问 **Approval scope**，请选择 **Allow once**。运行需要一两分钟，然后 Copilot 会总结结果。我们的结果是：`The run completed: 0/3 trials passed.` 每次试验都提到了 CT-102，其中两次以标题或开场白开头，而不是一句摘要。这正是练习 3 中的那个 bug：评估发现了它，而起始存储库中的技能仍然有这个 bug。
+   如果这些都符合你的预期，就批准。如果审核随后询问 **Approval scope**，请选择 **Allow once**。运行需要一两分钟，然后 Copilot 会总结结果。我们是用起始存储库中尚未修复的技能（没有练习 4 的修复）运行的，结果是：`The run completed: 0/3 trials passed.` 每次试验都提到了 CT-102，其中两次以标题或开场白开头，而不是一句摘要。这正是练习 3 中的那个 bug，评估发现了它。如果你的技能已经包含练习 4 的修复，你的运行就可能通过：我们的参考草稿用修复后的技能 3 次全部通过（见[参考答案](#参考答案)）。
 
 7. **阅读这次运行**。让 Copilot 解释结果；它会读取这次运行的记录，其中包含每次试验的答案和每个检查项的证据。然后自己检查一遍。这次运行把 Vally 的文件保存在一个新文件夹 `vally-results/eval-run-<id>/<date-and-time>/` 中：
 
@@ -277,6 +277,88 @@ Copilot CLI 还提供 `/eval` 命令，例如 `/eval review`、`/eval create` �
 <summary>受限运行器是沙盒吗？</summary>
 
 不是。与每次 Vally 运行一样，每次试验都在一个全新的工作区中、基于评估文件的副本进行；受限运行器还会增加全新的主目录、一套工具策略和一份很短的允许程序列表。但智能体的工具仍然可以访问工作区之外的文件（包括你的原始文件）和网络，费用也没有上限。审核内容本身也是这么说的。受限运行器真正提供的，是一次规模小、可预期、在你批准之前很容易核对的运行。
+
+</details>
+
+## 参考答案
+
+Copilot 的草稿每次运行都不一样，所以没有唯一正确的答案。把你的草稿和我们的参考草稿对照一下：它满足第 5 步清单中的每一行，注释指出了对应的行。其中有一项检查比练习 3 的更严格：`diff-not-contains` 读取工作区的差异（diff），也就是智能体做出的所有改动，只要其中包含 `backlog.json` 就失败。我们运行过它：用起始存储库中的技能，3 次试验一次都没有通过，因为每个答案都提到了 CT-102；用练习 4 中修复后的技能，3 次全部通过。
+
+<details>
+<summary>我们的参考草稿</summary>
+
+```yaml title="solutions/lab-6/release-notes-reference.eval.yaml"
+# Lab 6 reference: a draft that passes the review checklist in step 5. Copilot's drafts differ from
+# run to run, so compare yours with this one, row by row. The comments name the checklist rows.
+#
+# Copy it into evals/ and run it:
+#   cp solutions/lab-6/release-notes-reference.eval.yaml evals/
+#   vally eval -e evals/release-notes-reference.eval.yaml
+name: release-notes-reference
+description: >-
+  Good release notes announce only backlog items whose status is done, never mention unfinished
+  items anywhere, start with one short summary sentence, and leave backlog.json unchanged.
+type: capability
+defaults:
+  executor: copilot-sdk
+  model: claude-sonnet-5.5                   # a pinned model for the agent (scripts/use-model.sh changes it)
+  runs: 3                                    # several trials: one run is an anecdote
+  timeout: 120s
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # the draft has an LLM judge, so it pins the judge's model too
+  judge_timeout: 2m
+agent_environment:                           # the skill and backlog.json, so the agent can do the task
+  skills:
+    - ../.github/skills/release-notes
+  files:
+    - src: ../backlog.json
+      dest: backlog.json
+scoring:
+  threshold: 1                               # a sensible threshold: a trial passes only when every check passes
+stimuli:
+  - name: completed-work-only
+    # A real request: it names neither the skill nor the expected answer.
+    prompt: Write the release notes for this release from backlog.json.
+    rubric:
+      - The answer announces CT-101 (Search across all projects) and CT-103 (Dark mode for the dashboard) as part of this release.
+      - The answer does not mention CT-102 (Export reports to CSV) anywhere, in any words, not even to say that it was left out or comes later.
+      - The answer starts with one short sentence that summarizes the release.
+    graders:
+      # A negative check (Lab 2): the bug you care about is something extra, the unfinished item.
+      - type: output-contains
+        name: never-mentions-unfinished-ct102
+        config: { substring: CT-102, negate: true }
+      - type: output-contains
+        name: announces-done-ct101
+        config: { substring: CT-101 }
+      - type: output-contains
+        name: announces-done-ct103
+        config: { substring: CT-103 }
+      # A check on the transcript (Lab 3): the agent used the skill.
+      - type: skill-invocation
+        name: release-notes-skill-used
+        config:
+          required:
+            - release-notes
+      # A check on the workspace (Lab 3), stricter than Lab 3's: the workspace diff has a section for
+      # every file the agent changed, and none of them may be backlog.json.
+      - type: diff-not-contains
+        name: backlog-json-unchanged
+        config: { value: 'diff --git a/backlog.json' }
+      # The LLM judge, for what code can't see: the summary sentence, and CT-102 in other words.
+      - type: prompt
+        name: judge-summary-sentence-done-only
+        config:
+          scoring: binary
+```
+
+[在 GitHub 上打开](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter/blob/main/solutions/lab-6/release-notes-reference.eval.yaml)
+
+要自己运行它（3 次试验加一个评审，和你的草稿一样）：
+
+```bash
+cp solutions/lab-6/release-notes-reference.eval.yaml evals/
+vally eval -e evals/release-notes-reference.eval.yaml
+```
 
 </details>
 

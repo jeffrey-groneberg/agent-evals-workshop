@@ -3,8 +3,10 @@
 // between them and what each one does, in order. A frame marks the steps that repeat for every trial.
 // Text props may contain inline HTML such as <code>. In a narrow column the lanes fold into a numbered
 // list. The script adds a "Play the run" button that steps through the run; without it, the diagram is
-// complete as it is.
+// complete as it is. A step's pill compares it with the earlier labs: "new" the first time the workshop
+// shows that step, "changed" when a familiar step works differently. PillKey explains the pills used.
 import { Icon } from '@astrojs/starlight/components';
+import PillKey from './PillKey.astro';
 import RunStep from './RunStep.astro';
 
 type Tone = 'you' | 'runner' | 'agent' | 'check' | 'judge' | 'files' | 'muted';
@@ -90,6 +92,7 @@ const items = steps.map((step, i) => {
 		say: t.say(i + 1, whoSpoken, plain(step.text), plain(step.detail)),
 	};
 });
+const pills = steps.filter((step) => !step.badge).map((step) => step.state ?? '');
 const first = repeat ? repeat.first - 1 : items.length;
 const last = repeat ? repeat.last : items.length;
 const before = items.slice(0, first);
@@ -127,6 +130,7 @@ const uid = `rd-${[...(command ?? '') + steps.map((s) => s.text).join('|')]
 			</svg>
 			<span class="rd-play-label">{t.play}</span>
 		</button>
+		<PillKey states={pills} />
 	</figcaption>
 	<div class="rd-body">
 		<ul class="rd-actors" role="list" aria-label={t.actors}>
@@ -279,6 +283,9 @@ const uid = `rd-${[...(command ?? '') + steps.map((s) => s.text).join('|')]
 		grid-column: 1 / -1;
 		grid-row: 2;
 		justify-self: start;
+	}
+	.rd-head .pill-key {
+		grid-column: 1 / -1;
 	}
 	.rd-title {
 		font-size: var(--sl-text-xs);
@@ -487,6 +494,7 @@ const uid = `rd-${[...(command ?? '') + steps.map((s) => s.text).join('|')]
 		border-radius: 0.4rem;
 		background: var(--sl-color-gray-6);
 		font-size: 0.78rem;
+		white-space: normal;
 	}
 	.rd-note {
 		position: relative;

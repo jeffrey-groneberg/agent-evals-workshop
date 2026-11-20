@@ -24,12 +24,12 @@ Before you write a real eval, make sure the whole chain works: your terminal, th
   doing="Check your tools and sign-in, run one tiny real eval, and find your way around its results."
   testing="Your setup: can Vally reach GitHub Copilot with your sign-in?"
   checking="One code check: does the answer contain <code>READY</code>?"
-  task={{ text: 'Reply with the single word READY', state: 'new' }}
-  agent={{ text: 'GitHub Copilot, <code>claude-sonnet-5.5</code>', state: 'new' }}
+  task={{ text: 'Reply with the single word READY' }}
+  agent={{ text: 'GitHub Copilot, <code>claude-sonnet-5.5</code>' }}
   environment={{ text: 'An empty, fresh workspace' }}
-  trials={{ text: '1', state: 'new' }}
-  checks={{ text: '<code>output-contains</code> on the answer', state: 'new' }}
-  results={{ text: 'Run folder, trial record, dashboard', state: 'new' }}
+  trials={{ text: '1' }}
+  checks={{ text: '<code>output-contains</code> on the answer' }}
+  results={{ text: 'Run folder, trial record, dashboard' }}
 />
 
 <RunDiagram
@@ -42,13 +42,13 @@ Before you write a real eval, make sure the whole chain works: your terminal, th
     { id: 'results', name: 'Results', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
   ]}
   steps={[
-    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Vally reads the eval file: one task, one trial.', state: 'new' },
-    { from: 'vally', text: 'Builds a fresh, empty workspace', detail: 'And starts GitHub Copilot in it, with your sign-in.', state: 'new' },
+    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Vally reads the eval file: one task, one trial.' },
+    { from: 'vally', text: 'Builds a fresh, empty workspace', detail: 'And starts GitHub Copilot in it, with your sign-in.' },
     { from: 'vally', to: 'agent', text: 'Sends the prompt', detail: '"Reply with the single word READY and nothing else. Do not use any tools."' },
     { from: 'agent', to: 'vally', text: 'Answers <code>READY</code>', detail: 'No tools needed: one turn, about 20,000 tokens.' },
     { from: 'vally', to: 'checks', text: 'Hands over the answer', detail: 'The check looks for <code>READY</code> in it.' },
     { from: 'checks', to: 'vally', text: 'Pass, with evidence', detail: 'An error instead means the run itself failed, for example the sign-in.' },
-    { from: 'vally', to: 'results', text: 'Writes the results', detail: '<code>eval-results.md</code>, <code>results.jsonl</code> and the trial\'s folder.', state: 'new' },
+    { from: 'vally', to: 'results', text: 'Writes the results', detail: '<code>eval-results.md</code>, <code>results.jsonl</code> and the trial\'s folder.' },
   ]}
 />
 

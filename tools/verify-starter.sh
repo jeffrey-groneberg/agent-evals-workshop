@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Checks that the starter repository still behaves the way the site describes, without calling any
 # model or using any credential: lint, the mock control eval's expected pattern, every catch-up
-# state, both experiment plans, and every file the site quotes.
+# state, both experiment plans, the Lab 6 reference draft, and every file the site quotes.
 #   tools/verify-starter.sh <path-to-a-starter-checkout>
 # Needs the Vally CLI (npm install -g @microsoft/vally-cli@0.21.0), Node.js and jq.
 set -euo pipefail
@@ -50,6 +50,10 @@ step "Experiment plans (dry runs, no model calls)"
 for experiment in experiments/*.experiment.yaml; do
   vally experiment run "$experiment" --dry-run >/dev/null 2>&1 || fail "dry run of $experiment"
 done
+
+step "Lab 6 reference draft"
+cp solutions/lab-6/release-notes-reference.eval.yaml evals/
+vally lint -e evals/release-notes-reference.eval.yaml --strict >/dev/null 2>&1 || fail "lint of the Lab 6 reference draft in evals/"
 
 step "Lab 8 and Lab 9 starters"
 cp lab-files/lab-8/release-notes-endpoint.eval.yaml evals/

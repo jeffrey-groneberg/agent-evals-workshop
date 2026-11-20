@@ -24,12 +24,12 @@ import RunDiagram from '../../../../components/RunDiagram.astro';
   doing="检查你的工具和登录状态，运行一次很小的真实评估，并熟悉它的结果。"
   testing="你的环境设置：Vally 能否用你的登录访问 GitHub Copilot？"
   checking="一项代码检查：答案是否包含 <code>READY</code>？"
-  task={{ text: '只回复一个单词 READY', state: 'new' }}
-  agent={{ text: 'GitHub Copilot，<code>claude-sonnet-5.5</code>', state: 'new' }}
+  task={{ text: '只回复一个单词 READY' }}
+  agent={{ text: 'GitHub Copilot，<code>claude-sonnet-5.5</code>' }}
   environment={{ text: '一个全新的空工作区' }}
-  trials={{ text: '1', state: 'new' }}
-  checks={{ text: '对答案使用 <code>output-contains</code>', state: 'new' }}
-  results={{ text: '运行文件夹、试验记录、仪表板', state: 'new' }}
+  trials={{ text: '1' }}
+  checks={{ text: '对答案使用 <code>output-contains</code>' }}
+  results={{ text: '运行文件夹、试验记录、仪表板' }}
 />
 
 <RunDiagram
@@ -42,13 +42,13 @@ import RunDiagram from '../../../../components/RunDiagram.astro';
     { id: 'results', name: '结果', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
   ]}
   steps={[
-    { from: 'you', to: 'vally', text: '启动运行', detail: 'Vally 读取评估文件：一个任务，一次试验。', state: 'new' },
-    { from: 'vally', text: '创建一个全新的空工作区', detail: '并在其中用你的登录凭据启动 GitHub Copilot。', state: 'new' },
+    { from: 'you', to: 'vally', text: '启动运行', detail: 'Vally 读取评估文件：一个任务，一次试验。' },
+    { from: 'vally', text: '创建一个全新的空工作区', detail: '并在其中用你的登录凭据启动 GitHub Copilot。' },
     { from: 'vally', to: 'agent', text: '发送提示词', detail: '“Reply with the single word READY and nothing else. Do not use any tools.”' },
     { from: 'agent', to: 'vally', text: '回答 <code>READY</code>', detail: '不需要任何工具：一个回合，约 20,000 个 token。' },
     { from: 'vally', to: 'checks', text: '交出答案', detail: '检查项在其中查找 <code>READY</code>。' },
     { from: 'checks', to: 'vally', text: '通过，并附上证据', detail: '如果出现的是错误，说明运行本身失败了，例如登录失败。' },
-    { from: 'vally', to: 'results', text: '写入结果', detail: '<code>eval-results.md</code>、<code>results.jsonl</code> 和这次试验的文件夹。', state: 'new' },
+    { from: 'vally', to: 'results', text: '写入结果', detail: '<code>eval-results.md</code>、<code>results.jsonl</code> 和这次试验的文件夹。' },
   ]}
 />
 

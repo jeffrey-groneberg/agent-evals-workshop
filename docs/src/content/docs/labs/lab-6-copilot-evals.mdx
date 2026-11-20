@@ -192,7 +192,7 @@ You don't pick the runner in your request; the eval file does. One trial and sim
    - **What isn't restricted:** `A trusted full eval run has no tool-use restrictions and no OS, filesystem or network sandbox`, and the GitHub credential it uses is visible to every process the run starts.
    - **Where the results go:** `vally-results/<run>/<timestamp>`.
 
-   If that's what you expect, approve. If the review then asks for an **Approval scope**, choose **Allow once**. The run takes a minute or two; then Copilot summarizes it. Ours: `The run completed: 0/3 trials passed.` Every trial mentioned CT-102, and two started with a heading or a preamble instead of a summary sentence. That's the bug from Lab 3: the eval catches it, and the starter's skill still has it.
+   If that's what you expect, approve. If the review then asks for an **Approval scope**, choose **Allow once**. The run takes a minute or two; then Copilot summarizes it. Ours ran on the starter's skill, without the fix from Lab 4: `The run completed: 0/3 trials passed.` Every trial mentioned CT-102, and two started with a heading or a preamble instead of a summary sentence. That's the bug from Lab 3, and the eval catches it. If your skill has the fix from Lab 4, your run can pass: our reference draft passed 3 of 3 with it (see [Solution](#solution)).
 
 7. **Read the run.** Ask Copilot to explain the result; it reads the run's record, with each trial's answer and the evidence of every check. Then check it yourself. The run saved Vally's files in a new folder, `vally-results/eval-run-<id>/<date-and-time>/`:
 
@@ -277,6 +277,88 @@ The eval file decides. The bounded runner takes one trial per case, and no LLM j
 <summary>Is the bounded runner a sandbox?</summary>
 
 No. Like every Vally run, each trial works on copies of the eval's files in a fresh workspace, and the bounded runner adds a fresh home folder, a tool policy and a short list of allowed programs. But the agent's tools can still reach files outside the workspace, including your originals, and the network, and nothing caps the cost. The review says so itself. What the bounded runner does give you is a small, predictable run that's easy to check before you approve it.
+
+</details>
+
+## Solution
+
+Copilot's drafts differ from run to run, so there's no single right answer. Compare yours with our reference draft: it passes every row of the checklist in step 5, and its comments point to the rows. One check is stricter than Lab 3's: `diff-not-contains` reads the workspace diff, every change the agent made, and fails if `backlog.json` is among them. We ran it: with the starter's skill, 0 of 3 trials passed, because every answer mentioned CT-102; with the fixed skill from Lab 4, 3 of 3 passed.
+
+<details>
+<summary>Our reference draft</summary>
+
+```yaml title="solutions/lab-6/release-notes-reference.eval.yaml"
+# Lab 6 reference: a draft that passes the review checklist in step 5. Copilot's drafts differ from
+# run to run, so compare yours with this one, row by row. The comments name the checklist rows.
+#
+# Copy it into evals/ and run it:
+#   cp solutions/lab-6/release-notes-reference.eval.yaml evals/
+#   vally eval -e evals/release-notes-reference.eval.yaml
+name: release-notes-reference
+description: >-
+  Good release notes announce only backlog items whose status is done, never mention unfinished
+  items anywhere, start with one short summary sentence, and leave backlog.json unchanged.
+type: capability
+defaults:
+  executor: copilot-sdk
+  model: claude-sonnet-5.5                   # a pinned model for the agent (scripts/use-model.sh changes it)
+  runs: 3                                    # several trials: one run is an anecdote
+  timeout: 120s
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # the draft has an LLM judge, so it pins the judge's model too
+  judge_timeout: 2m
+agent_environment:                           # the skill and backlog.json, so the agent can do the task
+  skills:
+    - ../.github/skills/release-notes
+  files:
+    - src: ../backlog.json
+      dest: backlog.json
+scoring:
+  threshold: 1                               # a sensible threshold: a trial passes only when every check passes
+stimuli:
+  - name: completed-work-only
+    # A real request: it names neither the skill nor the expected answer.
+    prompt: Write the release notes for this release from backlog.json.
+    rubric:
+      - The answer announces CT-101 (Search across all projects) and CT-103 (Dark mode for the dashboard) as part of this release.
+      - The answer does not mention CT-102 (Export reports to CSV) anywhere, in any words, not even to say that it was left out or comes later.
+      - The answer starts with one short sentence that summarizes the release.
+    graders:
+      # A negative check (Lab 2): the bug you care about is something extra, the unfinished item.
+      - type: output-contains
+        name: never-mentions-unfinished-ct102
+        config: { substring: CT-102, negate: true }
+      - type: output-contains
+        name: announces-done-ct101
+        config: { substring: CT-101 }
+      - type: output-contains
+        name: announces-done-ct103
+        config: { substring: CT-103 }
+      # A check on the transcript (Lab 3): the agent used the skill.
+      - type: skill-invocation
+        name: release-notes-skill-used
+        config:
+          required:
+            - release-notes
+      # A check on the workspace (Lab 3), stricter than Lab 3's: the workspace diff has a section for
+      # every file the agent changed, and none of them may be backlog.json.
+      - type: diff-not-contains
+        name: backlog-json-unchanged
+        config: { value: 'diff --git a/backlog.json' }
+      # The LLM judge, for what code can't see: the summary sentence, and CT-102 in other words.
+      - type: prompt
+        name: judge-summary-sentence-done-only
+        config:
+          scoring: binary
+```
+
+[Open it on GitHub](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter/blob/main/solutions/lab-6/release-notes-reference.eval.yaml)
+
+To run it yourself, with three trials and a judge, like your draft:
+
+```bash
+cp solutions/lab-6/release-notes-reference.eval.yaml evals/
+vally eval -e evals/release-notes-reference.eval.yaml
+```
 
 </details>
 

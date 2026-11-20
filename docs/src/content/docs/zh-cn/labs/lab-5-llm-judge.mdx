@@ -31,7 +31,7 @@ import RunDiagram from '../../../../components/RunDiagram.astro';
   trials={{ text: '每个已知答案 1 次；真实评估中 3 次' }}
   checks={{ text: '和之前一样的代码检查项' }}
   judge={{ text: 'Copilot 上的 <code>gpt-5.6-luna</code>，使用你的评分标准', state: 'new' }}
-  results={{ text: '评审对每个答案给出的判定结果和理由', state: 'new' }}
+  results={{ text: '评审对每个答案给出的判定结果和理由', state: 'changed' }}
 />
 
 <RunDiagram
@@ -254,6 +254,184 @@ import RunDiagram from '../../../../components/RunDiagram.astro';
 <summary>智能体用的是 Claude 模型，为什么评审用的是 GPT 模型？</summary>
 
 模型在评判与自己同类的输出时，往往会过于宽容；研究人员把这称为自我偏好偏差。来自另一个模型系列的评审更加独立。如果你把智能体换成 GPT 模型，也请通过 `--param JUDGE_MODEL=<model-id>` 选择另一个系列的评审模型。
+
+</details>
+
+## 参考答案
+
+把你的文件和我们的对照一下。在评审的对照用例中，高亮的那一行就是你在第 5 步中替换的评分标准（rubric）。带评审的真实评估就是你在第 6 步中复制的文件；其中高亮的行，是它相对练习 3 的评估新增的三处内容。
+
+<details>
+<summary>评审的对照用例（严格版评分标准）</summary>
+
+```yaml title="solutions/lab-5/judge-controls.eval.yaml" ins={36}
+# Lab 5 solution (step 5): the judge controls with the stricter rubric.
+#
+# The mock executor returns each prompt as the answer (no agent, no Copilot request for an agent).
+# Each answer is graded twice: by the code check from Lab 2 (is CT-102 absent?) and by an LLM
+# judge that reads the answer and the rubric. Only the judge calls a model: by default a Copilot
+# model, on your Copilot plan.
+#
+# Run it:
+#   vally eval -e evals/judge-controls.eval.yaml
+# Another judge model: add --param JUDGE_MODEL=<model-id>. Your own endpoint: see Lab 5 on the site.
+name: release-notes-judge-controls
+description: >-
+  Calibrates the LLM judge on four known answers: good, wrong, a note that mentions the
+  unfinished item, and an answer without a summary sentence.
+defaults:
+  executor: mock
+  runs: 1
+  timeout: 60s
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # the judge: a Copilot model, from another model family than the agent's
+  judge_timeout: 2m
+scoring:
+  threshold: 1
+stimuli:
+  # Answer C from Lab 1: completed work only, with a summary sentence.
+  - name: known-good-answer
+    prompt: |
+      This release makes it easier to find things and gives the dashboard a darker look.
+
+      - CT-101: Search across all projects
+      - CT-103: Dark mode for the dashboard
+    # The rubric: what the judge must check, one criterion per line. Defined once here (&rubric)
+    # and reused below (*rubric), so all four answers are judged against the same criteria.
+    # (Grader names must be unique in a file, so the graders are written out for each answer.)
+    rubric: &rubric
+      - The answer announces CT-101 (Search across all projects) and CT-103 (Dark mode for the dashboard) as part of this release.
+      - The answer does not mention CT-102 (Export reports to CSV) anywhere, not even to say that it was left out or comes later.
+      - The answer starts with one short sentence that summarizes the release.
+      - The tone is friendly and the answer is short.
+    graders:
+      - type: output-contains   # the code check from Lab 2
+        name: good-no-ct102
+        config: { substring: CT-102, negate: true }
+      - type: prompt            # the LLM judge: reads the answer, applies the rubric
+        name: good-judge
+        config:
+          scoring: binary       # pass or fail; easier to calibrate than a 1-5 scale
+
+  # Answer A from Lab 1: announces CT-102, which is still in progress.
+  - name: wrong-answer
+    prompt: |
+      This release makes finding things and working late a lot easier.
+
+      - CT-101: Search across all projects
+      - CT-102: Export reports to CSV
+      - CT-103: Dark mode for the dashboard
+    rubric: *rubric
+    graders:
+      - type: output-contains
+        name: wrong-no-ct102
+        config: { substring: CT-102, negate: true }
+      - type: prompt
+        name: wrong-judge
+        config:
+          scoring: binary
+
+  # Answer B from Lab 1: leaves CT-102 out of the list, but talks about it in a note.
+  - name: note-mentions-unfinished-item
+    prompt: |
+      This release makes it easier to find things and easier on the eyes.
+
+      - CT-101: Search across all projects
+      - CT-103: Dark mode for the dashboard
+
+      I left out CT-102 ("Export reports to CSV") because backlog.json marks it as in-progress.
+    rubric: *rubric
+    graders:
+      - type: output-contains
+        name: note-no-ct102
+        config: { substring: CT-102, negate: true }
+      - type: prompt
+        name: note-judge
+        config:
+          scoring: binary
+
+  # Answer D from Lab 1: the right items, but no summary sentence.
+  - name: no-summary-sentence
+    prompt: |
+      - CT-101: Search across all projects
+      - CT-103: Dark mode for the dashboard
+    rubric: *rubric
+    graders:
+      - type: output-contains
+        name: nosummary-no-ct102
+        config: { substring: CT-102, negate: true }
+      - type: prompt
+        name: nosummary-judge
+        config:
+          scoring: binary
+```
+
+[在 GitHub 上打开](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter/blob/main/solutions/lab-5/judge-controls.eval.yaml)
+
+</details>
+
+<details>
+<summary>带评审的真实评估</summary>
+
+```yaml title="solutions/lab-5/release-notes-judged.eval.yaml" ins={15-16,28-32,53-56}
+# Lab 5 solution (step 6): the real eval plus an LLM judge.
+# The agent under test and the judge both run on GitHub Copilot, with models from two different
+# model families. Run it:
+#   vally eval -e evals/release-notes-judged.eval.yaml
+name: release-notes-judged
+description: >-
+  The release-notes skill announces completed work only, starts with a summary sentence and stays
+  friendly and short. Code checks for the facts, an LLM judge for the rest.
+type: capability
+defaults:
+  executor: copilot-sdk
+  model: claude-sonnet-5.5  # pinned, so results are comparable (scripts/use-model.sh changes it)
+  runs: 3
+  timeout: 120s
+  judge_model: ${JUDGE_MODEL=gpt-5.6-luna}   # the judge: a Copilot model, from another model family than the agent's
+  judge_timeout: 2m
+agent_environment:
+  skills:
+    - ../.github/skills/release-notes
+  files:
+    - src: ../backlog.json
+      dest: backlog.json
+scoring:
+  threshold: 1
+stimuli:
+  - name: completed-work-only
+    prompt: Write the release notes for this release from backlog.json.
+    rubric:
+      - The answer announces CT-101 (Search across all projects) and CT-103 (Dark mode for the dashboard) as part of this release.
+      - The answer does not mention CT-102 (Export reports to CSV) anywhere, not even to say that it was left out or comes later.
+      - The answer starts with one short sentence that summarizes the release.
+      - The tone is friendly and the answer is short.
+    graders:
+      - type: output-contains
+        name: leaves-out-unfinished-export
+        config: { substring: CT-102, negate: true }
+      - type: output-contains
+        name: includes-done-search
+        config: { substring: CT-101 }
+      - type: output-contains
+        name: includes-done-dark-mode
+        config: { substring: CT-103 }
+      - type: skill-invocation
+        name: release-notes-skill-used
+        config:
+          required:
+            - release-notes
+      - type: file-contains
+        name: backlog-still-in-progress
+        config:
+          path: backlog.json
+          value: '"status": "in-progress"'
+      - type: prompt
+        name: judge-release-notes-quality
+        config:
+          scoring: binary
+```
+
+[在 GitHub 上打开](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter/blob/main/solutions/lab-5/release-notes-judged.eval.yaml)
 
 </details>
 

@@ -23,11 +23,11 @@ release-notes 技能（skill）只是练手。现在，把同样的循环应用�
   doing="把完整的循环应用到你自己的智能体或技能上，从定义“好”的标准，一直到在 CI 中为它把关。"
   testing="你自己的智能体、技能、自定义指令或工具"
   checking="你自己的检查项：先用代码检查，只在必要时使用经过校准的 LLM 评审"
-  task={{ text: '你的智能体真正会收到的任务', state: 'new' }}
-  agent={{ text: '你的智能体', state: 'new' }}
-  environment={{ text: '你的技能和文件', state: 'new' }}
+  task={{ text: '你的智能体真正会收到的任务', state: 'changed' }}
+  agent={{ text: '你的智能体', state: 'changed' }}
+  environment={{ text: '你的技能和文件', state: 'changed' }}
   trials={{ text: '3 次或更多' }}
-  checks={{ text: '你自己的：答案、运行记录、工作区', state: 'new' }}
+  checks={{ text: '你自己的：答案、运行记录、工作区', state: 'changed' }}
   judge={{ text: '可选，需先校准' }}
   results={{ text: '同样的文件和仪表板' }}
 />
@@ -42,8 +42,8 @@ release-notes 技能（skill）只是练手。现在，把同样的循环应用�
     { id: 'results', name: '结果', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
   ]}
   steps={[
-    { from: 'you', to: 'vally', text: '启动运行', detail: '你的评估文件：一个真实任务、你的文件、你的检查项。', state: 'new' },
-    { from: 'vally', text: '创建全新的工作区', detail: '带有你的技能和任务需要的文件。', state: 'new' },
+    { from: 'you', to: 'vally', text: '启动运行', detail: '你的评估文件：一个真实任务、你的文件、你的检查项。' },
+    { from: 'vally', text: '创建全新的工作区', detail: '带有你的技能和任务需要的文件。' },
     { from: 'vally', to: 'agent', text: '发送你的任务', detail: '真实用户会输入的请求，不带提示。' },
     { from: 'agent', to: 'vally', text: '回答', detail: 'Vally 保留答案、运行记录和工作区。' },
     { from: 'vally', to: 'checks', text: '交出证据', detail: '交给你事先用已知答案测试过的检查项。' },

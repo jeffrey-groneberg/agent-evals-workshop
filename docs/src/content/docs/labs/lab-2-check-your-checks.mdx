@@ -25,10 +25,10 @@ Your criteria from Lab 1 become checks now. But before you let them grade a real
   doing="Feed four known answers to your checks, find their blind spot, and fix it with a negative check."
   testing="Your checks: do they pass the good answers and fail the bad ones?"
   checking="Code checks on the answer: contains CT-101, contains CT-103, and, new, doesn't contain CT-102"
-  task={{ text: 'Four known answers, written as prompts', state: 'new' }}
+  task={{ text: 'Four known answers, written as prompts', state: 'changed' }}
   agent={{ text: 'Mock executor: no model; the prompt becomes the answer', state: 'changed' }}
   trials={{ text: '1 per answer: a mock never varies' }}
-  checks={{ text: '<code>output-contains</code>, positive and negative', state: 'new' }}
+  checks={{ text: '<code>output-contains</code>, positive and negative', state: 'changed' }}
   results={{ text: 'Terminal, <code>--verbose</code>, trial records, dashboard' }}
 />
 
@@ -45,7 +45,7 @@ Your criteria from Lab 1 become checks now. But before you let them grade a real
     { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Four tasks, each with a known answer, one trial each.' },
     { from: 'vally', to: 'mock', text: 'Sends the prompt', detail: 'The prompt is the known answer, word for word.', state: 'changed' },
     { from: 'mock', to: 'vally', text: 'Returns the prompt as the answer', detail: 'No model, no tokens, the same every time.', state: 'changed' },
-    { from: 'vally', to: 'checks', text: 'Hands over the answer', detail: 'Contains CT-101 and CT-103? And, once you add it, leaves out CT-102?', state: 'new' },
+    { from: 'vally', to: 'checks', text: 'Hands over the answer', detail: 'Contains CT-101 and CT-103? And, once you add it, leaves out CT-102?', state: 'changed' },
     { from: 'checks', to: 'vally', text: 'Pass or fail, with evidence', detail: 'The good and the alternative answer should pass; the wrong and the empty one should fail.' },
     { from: 'vally', to: 'results', text: 'Writes the results', detail: 'The pattern of verdicts shows whether your checks tell good from bad.' },
   ]}
@@ -297,6 +297,102 @@ To test the checks, you need answers whose verdict you know. A real agent writes
 <summary>Your known-good answer fails a check. What's wrong: the answer or the check?</summary>
 
 If you're sure the answer is good, the check is wrong: too strict, or checking formatting instead of meaning. That's the reason for the acceptable alternative: a check such as "the first bullet is CT-101" would fail it, although the answer is fine.
+
+</details>
+
+## Solution
+
+Compare your file with ours. The highlighted lines are the ones you add in step 4: a negative check for every answer.
+
+<details>
+<summary>The finished control eval</summary>
+
+```yaml title="solutions/lab-2/release-notes-control.eval.yaml" ins={32-34,49-51,66-68,80-82}
+# Lab 2 solution: a control eval. It tests the checks, not the agent.
+#
+# The mock executor calls no model. It returns each stimulus's prompt text as the answer,
+# so every prompt below is a hand-written sample answer. That makes this eval free and
+# deterministic: run it as often as you like.
+#
+# What you want to see: the two good answers pass, the wrong and the empty answer fail.
+name: release-notes-check-controls
+description: >-
+  Controls for the release-notes checks. A known-good answer and an acceptable alternative
+  must pass; a wrong answer and an empty answer must fail. No model, no cost.
+defaults:
+  executor: mock   # no model, no cost: the "answer" is the prompt text itself
+  runs: 1          # a mock answer never changes, so one trial is enough
+  timeout: 60s
+scoring:
+  threshold: 1     # a trial passes only when its score reaches 1, that is, every check passes
+stimuli:
+  # Good: completed work only, with a summary sentence.
+  - name: known-good-answer
+    prompt: |
+      This release makes finding and reading your work easier.
+      - CT-101: Search across all projects
+      - CT-103: Dark mode for the dashboard
+    graders:
+      - type: output-contains
+        name: good-includes-search
+        config: { substring: CT-101 }
+      - type: output-contains
+        name: good-includes-dark-mode
+        config: { substring: CT-103 }
+      - type: output-contains
+        name: good-leaves-out-export
+        config: { substring: CT-102, negate: true }
+
+  # Also good: different order and wording. Good checks don't depend on exact formatting.
+  - name: acceptable-alternative
+    prompt: |
+      Dark mode and cross-project search are here.
+      - CT-103: Dark mode for the dashboard
+      - CT-101: Search across all projects
+    graders:
+      - type: output-contains
+        name: alt-includes-search
+        config: { substring: CT-101 }
+      - type: output-contains
+        name: alt-includes-dark-mode
+        config: { substring: CT-103 }
+      - type: output-contains
+        name: alt-leaves-out-export
+        config: { substring: CT-102, negate: true }
+
+  # Wrong: it announces CT-102, which is still in progress. This is the bug you'll meet in Lab 3.
+  - name: wrong-answer
+    prompt: |
+      - CT-101: Search across all projects
+      - CT-102: Export reports to CSV
+      - CT-103: Dark mode for the dashboard
+    graders:
+      - type: output-contains
+        name: wrong-includes-search
+        config: { substring: CT-101 }
+      - type: output-contains
+        name: wrong-includes-dark-mode
+        config: { substring: CT-103 }
+      - type: output-contains
+        name: wrong-leaves-out-export
+        config: { substring: CT-102, negate: true }
+
+  # Wrong: it announces nothing.
+  - name: empty-answer
+    prompt: Nothing new to announce in this release.
+    graders:
+      - type: output-contains
+        name: empty-includes-search
+        config: { substring: CT-101 }
+      - type: output-contains
+        name: empty-includes-dark-mode
+        config: { substring: CT-103 }
+      - type: output-contains
+        name: empty-leaves-out-export
+        config: { substring: CT-102, negate: true }
+```
+
+[Open it on GitHub](https://github.com/jeffrey-groneberg/agent-evals-workshop-starter/blob/main/solutions/lab-2/release-notes-control.eval.yaml)
 
 </details>
 

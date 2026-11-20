@@ -23,11 +23,11 @@ The release-notes skill was practice. Now apply the same loop to something you b
   doing="Apply the whole loop to an agent or skill of your own, from defining good to guarding it in CI."
   testing="Your own agent, skill, custom instructions or tool"
   checking="Your checks: code checks first, a calibrated judge only where needed"
-  task={{ text: 'A task your agent really gets', state: 'new' }}
-  agent={{ text: 'Your agent', state: 'new' }}
-  environment={{ text: 'Your skill and files', state: 'new' }}
+  task={{ text: 'A task your agent really gets', state: 'changed' }}
+  agent={{ text: 'Your agent', state: 'changed' }}
+  environment={{ text: 'Your skill and files', state: 'changed' }}
   trials={{ text: '3 or more' }}
-  checks={{ text: 'Yours: answer, transcript, workspace', state: 'new' }}
+  checks={{ text: 'Yours: answer, transcript, workspace', state: 'changed' }}
   judge={{ text: 'Optional, calibrated first' }}
   results={{ text: 'The same files and dashboard' }}
 />
@@ -42,8 +42,8 @@ The release-notes skill was practice. Now apply the same loop to something you b
     { id: 'results', name: 'Results', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
   ]}
   steps={[
-    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Your eval file: a real task, your files, your checks.', state: 'new' },
-    { from: 'vally', text: 'Builds a fresh workspace', detail: 'With your skill and the files the task needs.', state: 'new' },
+    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Your eval file: a real task, your files, your checks.' },
+    { from: 'vally', text: 'Builds a fresh workspace', detail: 'With your skill and the files the task needs.' },
     { from: 'vally', to: 'agent', text: 'Sends your task', detail: 'The request a real user would type, without hints.' },
     { from: 'agent', to: 'vally', text: 'Answers', detail: 'Vally keeps the answer, the transcript and the workspace.' },
     { from: 'vally', to: 'checks', text: 'Hands over the evidence', detail: 'To checks you tested first on known answers.' },

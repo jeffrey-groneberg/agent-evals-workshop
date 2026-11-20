@@ -1,0 +1,68 @@
+---
+// The key to the "new" and "changed" pills in the lab boxes (EvalMap and RunDiagram). A box passes the
+// states it uses, and the key lists only those, in the same pill shapes.
+interface Props {
+	states: string[];
+}
+
+const { states } = Astro.props;
+const zh = Astro.locals.starlightRoute.lang === 'zh-CN';
+const t = zh
+	? { new: ['新', '本工作坊中首次出现'], changed: ['有变化', '之前见过，这里有所不同'] }
+	: { new: ['new', 'first time in the workshop'], changed: ['changed', 'seen before, different here'] };
+const shown = (['new', 'changed'] as const).filter((state) => states.includes(state));
+---
+
+{
+	shown.length > 0 && (
+		<dl class="pill-key">
+			{shown.map((state) => (
+				<div class:list={['pill-key-item', `is-${state}`]}>
+					<dt>
+						<span class="pill-key-pill">{t[state][0]}</span>
+					</dt>
+					<dd>{t[state][1]}</dd>
+				</div>
+			))}
+		</dl>
+	)
+}
+
+<style>
+	.pill-key {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.3rem 1rem;
+		margin: 0;
+		color: var(--sl-color-gray-2);
+		font-size: 0.75rem;
+		font-weight: 400;
+		letter-spacing: normal;
+		line-height: 1.3;
+		text-transform: none;
+	}
+	.pill-key-item {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.pill-key dt,
+	.pill-key dd {
+		margin: 0;
+	}
+	.pill-key-pill {
+		display: inline-block;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		background: var(--sl-color-accent);
+		color: var(--sl-color-black);
+		font-size: 0.7rem;
+		font-weight: 700;
+		line-height: 1.2rem;
+		white-space: nowrap;
+	}
+	.is-changed .pill-key-pill {
+		background: var(--ws-peach);
+	}
+</style>
