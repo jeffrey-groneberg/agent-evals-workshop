@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="20 分钟" cost="1 次 Copilot 运行" uses="你的 Codespace 或本地终端" />
 
@@ -29,6 +30,26 @@ import Pieces from '../../../../components/Pieces.astro';
   trials={{ text: '1', state: 'new' }}
   checks={{ text: '对答案使用 <code>output-contains</code>', state: 'new' }}
   results={{ text: '运行文件夹、试验记录、仪表板', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally eval -e lab-files/lab-0/setup-check.eval.yaml"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: '<code>claude-sonnet-5.5</code>' },
+    { id: 'checks', name: '检查项', icon: 'approve-check', tone: 'check', note: '<code>answer-says-ready</code>' },
+    { id: 'results', name: '结果', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '启动运行', detail: 'Vally 读取评估文件：一个任务，一次试验。', state: 'new' },
+    { from: 'vally', text: '创建一个全新的空工作区', detail: '并在其中用你的登录凭据启动 GitHub Copilot。', state: 'new' },
+    { from: 'vally', to: 'agent', text: '发送提示词', detail: '“Reply with the single word READY and nothing else. Do not use any tools.”' },
+    { from: 'agent', to: 'vally', text: '回答 <code>READY</code>', detail: '不需要任何工具：一个回合，约 20,000 个 token。' },
+    { from: 'vally', to: 'checks', text: '交出答案', detail: '检查项在其中查找 <code>READY</code>。' },
+    { from: 'checks', to: 'vally', text: '通过，并附上证据', detail: '如果出现的是错误，说明运行本身失败了，例如登录失败。' },
+    { from: 'vally', to: 'results', text: '写入结果', detail: '<code>eval-results.md</code>、<code>results.jsonl</code> 和这次试验的文件夹。', state: 'new' },
+  ]}
 />
 
 ## 你将用到的要素

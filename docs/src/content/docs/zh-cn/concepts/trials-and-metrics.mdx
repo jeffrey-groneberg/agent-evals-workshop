@@ -4,6 +4,7 @@ description: 为什么每个任务都要运行多次，通过率、pass@k 和 pa
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![一个结果仪表板：蓝绿色机器人和一摞请求；一个试验结果网格，大多是绿色对勾，也有几个红叉；还有显示通过率的环形图和柱状图。](../../../../assets/trials.jpg)
@@ -11,6 +12,25 @@ import { LinkCard } from '@astrojs/starlight/components';
 </figure>
 
 你每次问智能体同一件事，它都可能给出不同的回答。所以，单次运行只能告诉你*可能*发生什么，而不能告诉你*通常*会发生什么。这就是评估（eval）要把每个任务运行多次的原因。每一次运行就是一次**试验**（trial）。
+
+<RunDiagram
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'agent', name: '智能体', icon: 'laptop', tone: 'agent' },
+    { id: 'checks', name: '检查项', icon: 'approve-check', tone: 'check' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '要求进行多次试验', detail: '在评估文件中写 <code>runs: 3</code>，或在单次运行时用 <code>--runs 5</code>。' },
+    { from: 'vally', to: 'agent', text: '发送同一个任务', detail: '每次都在全新的工作区中。' },
+    { from: 'agent', to: 'vally', text: '回答', detail: '答案不一定每次都一样。' },
+    { from: 'vally', to: 'checks', text: '交出证据' },
+    { from: 'checks', to: 'vally', text: '通过或失败', detail: '每次试验一个判定结果。' },
+    { from: 'vally', text: '计算指标', detail: '通过率：通过的比例。pass@k：是否至少有一次通过？pass^k：k 次全部通过的概率。' },
+    { from: 'vally', to: 'you', text: '按任务报告', detail: '在 <code>eval-results.md</code> 和仪表板中。' },
+  ]}
+  repeat={{ first: 2, last: 5, label: '对每次试验，并行进行' }}
+/>
 
 ## 为什么只运行一次不够
 

@@ -5,6 +5,7 @@ description: 评估（eval）是一种可重复的测试，用来检验可能变
 
 import { LinkCard } from '@astrojs/starlight/components';
 import Flow from '../../../../components/Flow.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![三张相同的请求卡片进入同一个蓝绿色的小机器人，也就是智能体；出来的却是三张不同的回答卡片，分别标着通过、失败和通过。](../../../../assets/what-is-an-eval.jpg)
@@ -14,6 +15,24 @@ import Flow from '../../../../components/Flow.astro';
 **评估把“看起来不错”变成一项可以重复执行的检查。**
 
 **评估**（eval，*evaluation* 的缩写）是一种可重复的测试，用来检验可能变化的输出。你在已知的初始状态下给 AI 智能体布置一个任务，让它去完成，然后对照你事先写下的标准，检查它做了什么、产出了什么。由于智能体的输出每次运行都可能不同，你要把同一个任务运行多次，并报告它**成功的频率**。
+
+<RunDiagram
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'runner', name: '评估运行器', icon: 'setting', tone: 'runner', note: '练习中用的是 Vally' },
+    { id: 'agent', name: '智能体', icon: 'laptop', tone: 'agent', note: '模型、指令、工具' },
+    { id: 'checks', name: '评分器', icon: 'approve-check', tone: 'check', note: '代码检查项或 LLM 评审' },
+  ]}
+  steps={[
+    { from: 'you', to: 'runner', text: '启动评估', detail: '一个任务、一个起始情境，以及“好”的标准。' },
+    { from: 'runner', to: 'agent', text: '把任务交给它', detail: '每次都在起始情境的一个全新副本中。' },
+    { from: 'agent', to: 'runner', text: '回答', detail: '可能与上一次试验的答案不同。' },
+    { from: 'runner', to: 'checks', text: '交出证据', detail: '答案、智能体做了什么，以及它改动了什么。' },
+    { from: 'checks', to: 'runner', text: '通过或失败', detail: '并附上判定结果的证据。' },
+    { from: 'runner', to: 'you', text: '报告通过率', detail: '不是单一的判定结果，而是智能体成功的频率。' },
+  ]}
+  repeat={{ first: 2, last: 5, label: '同一个任务的多次试验' }}
+/>
 
 ## 为什么智能体需要评估
 

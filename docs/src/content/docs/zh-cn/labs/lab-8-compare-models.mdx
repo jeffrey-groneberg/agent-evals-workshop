@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="20 分钟，自定进度" cost="6 次 Copilot 运行；B 部分使用你自己的终结点" uses="experiments/models.experiment.yaml" />
 
@@ -31,6 +32,26 @@ import Pieces from '../../../../components/Pieces.astro';
   trials={{ text: '每个模型 3 次' }}
   checks={{ text: '答案、运行记录和工作区，与练习 3 相同' }}
   results={{ text: '实验对比、仪表板' }}
+/>
+
+<RunDiagram
+  command="vally experiment run experiments/models.experiment.yaml"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'a', name: '模型 A', icon: 'laptop', tone: 'agent', note: '<code>claude-sonnet-5.5</code>' },
+    { id: 'b', name: '模型 B', icon: 'laptop', tone: 'agent', note: '<code>gpt-5.6-luna</code>' },
+    { id: 'report', name: '对比', icon: 'analytics', tone: 'files', note: '报告和仪表板' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '启动实验', detail: '一个评估，两个只在 <code>model</code> 上不同的变体。' },
+    { from: 'vally', to: 'a', text: '在模型 A 上运行评估', detail: '使用修复后的技能和同样的五项检查，运行三次试验。', state: 'changed' },
+    { from: 'a', to: 'vally', text: '判定结果、token 和耗时' },
+    { from: 'vally', to: 'b', text: '在模型 B 上运行同一个评估', detail: '其他一切保持不变。', state: 'changed' },
+    { from: 'b', to: 'vally', text: '判定结果、token 和耗时' },
+    { from: 'vally', to: 'report', text: '写出对比', detail: '每个模型的通过率、token 和耗时；答案保存在试验记录中。' },
+  ]}
+  caption='在可选的 B 部分中，智能体改为在你自己的模型终结点上运行。'
 />
 
 ## 你将用到的要素

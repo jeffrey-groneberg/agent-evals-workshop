@@ -5,6 +5,7 @@ description: An eval is a repeatable test for output that can change. Why AI age
 
 import { LinkCard } from '@astrojs/starlight/components';
 import Flow from '../../../components/Flow.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![Three identical request cards go into the same small teal robot, the agent; three different answer cards come out, marked pass, fail and pass.](../../../assets/what-is-an-eval.jpg)
@@ -14,6 +15,24 @@ import Flow from '../../../components/Flow.astro';
 **Evals turn "looks good" into a check you can repeat.**
 
 An **eval** (short for *evaluation*) is a repeatable test for output that can change. You give an AI agent a task in a known starting situation, let it work, and then check what it did and what it produced against criteria you wrote down beforehand. Because the agent's output varies from run to run, you run the same task several times and report **how often** it succeeds.
+
+<RunDiagram
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'runner', name: 'Eval runner', icon: 'setting', tone: 'runner', note: 'Vally, in the labs' },
+    { id: 'agent', name: 'Agent', icon: 'laptop', tone: 'agent', note: 'model, instructions, tools' },
+    { id: 'checks', name: 'Graders', icon: 'approve-check', tone: 'check', note: 'code checks or an LLM judge' },
+  ]}
+  steps={[
+    { from: 'you', to: 'runner', text: 'Starts the eval', detail: 'A task, a starting situation, and what good looks like.' },
+    { from: 'runner', to: 'agent', text: 'Gives it the task', detail: 'Each time in a fresh copy of the starting situation.' },
+    { from: 'agent', to: 'runner', text: 'Answers', detail: 'Possibly differently from the trial before.' },
+    { from: 'runner', to: 'checks', text: 'Hands over the evidence', detail: 'The answer, what the agent did and what it changed.' },
+    { from: 'checks', to: 'runner', text: 'Pass or fail', detail: 'With evidence for the verdict.' },
+    { from: 'runner', to: 'you', text: 'Reports a pass rate', detail: 'Not one verdict, but how often the agent succeeds.' },
+  ]}
+  repeat={{ first: 2, last: 5, label: 'Several trials of the same task' }}
+/>
 
 ## Why agents need evals
 

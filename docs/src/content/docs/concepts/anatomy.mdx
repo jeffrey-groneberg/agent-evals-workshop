@@ -4,8 +4,8 @@ description: The parts every eval has (task, agent, environment, trial, transcri
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
-import Flow from '../../../components/Flow.astro';
 import Pieces from '../../../components/Pieces.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![A pipeline from left to right: a task card; the teal robot agent inside a glass workspace with a folder and documents; an unrolled transcript; a magnifying glass, a checklist and a peach robot judge with a clipboard; and a score gauge with a green check.](../../../assets/anatomy.jpg)
@@ -18,15 +18,23 @@ Every eval, whatever tool runs it, has the same parts. Learn them once, and Vall
 
 A **trial** is one run of one task. Here's what happens in every trial:
 
-<Flow
-  label="What happens in one trial"
+<RunDiagram
+  title={'What happens in one trial'}
+  actors={[
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'agent', name: 'Agent under test', icon: 'laptop', tone: 'agent', note: 'started by the executor' },
+    { id: 'graders', name: 'Graders', icon: 'approve-check', tone: 'check', note: 'checks and judges' },
+    { id: 'record', name: 'Trial record', icon: 'analytics', tone: 'files', note: '<code>results.jsonl</code>' },
+  ]}
   steps={[
-    { label: 'Task', detail: 'The prompt and its inputs (Vally: a stimulus)', tone: 'input' },
-    { label: 'Environment', detail: 'A fresh workspace with the skill and files', tone: 'input' },
-    { label: 'Agent works', detail: 'The executor runs the agent under test', tone: 'agent' },
-    { label: 'Transcript and outcome', detail: 'What it did, and what it left behind', tone: 'agent' },
-    { label: 'Graders', detail: 'Each check returns pass or fail, a score and evidence', tone: 'grader' },
-    { label: 'Verdict', detail: 'Score against the threshold: pass or fail', tone: 'result' },
+    { from: 'vally', text: 'Takes one task', detail: 'In Vally, a stimulus: the prompt and its inputs.' },
+    { from: 'vally', text: 'Prepares the environment', detail: 'A fresh workspace with the skills and files the task needs.' },
+    { from: 'vally', to: 'agent', text: 'The executor starts the agent', detail: 'And sends the prompt. <code>copilot-sdk</code> runs GitHub Copilot.' },
+    { from: 'agent', text: 'Works', detail: 'Turns, tool calls, skill use: the transcript records each one.' },
+    { from: 'agent', to: 'vally', text: 'Finishes', detail: 'With an answer, and a workspace it may have changed.' },
+    { from: 'vally', to: 'graders', text: 'Hands over the evidence', detail: 'Each grader reads the answer, the transcript or the workspace.' },
+    { from: 'graders', to: 'vally', text: 'Pass or fail, a score, evidence', detail: 'One result per grader.' },
+    { from: 'vally', to: 'record', text: 'Records the verdict', detail: 'The score against the threshold: the trial passes or fails.' },
   ]}
 />
 

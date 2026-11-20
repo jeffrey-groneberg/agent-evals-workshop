@@ -58,7 +58,6 @@ import { LinkCard, Steps } from '@astrojs/starlight/components';
    Ready.
    ```
 
-
    这项检查不会发起任何网络调用。真正检验你登录是否成功的，是[练习 0](../../labs/lab-0-setup/) 中那个很小的评估。
 
 </Steps>
@@ -88,7 +87,6 @@ import { LinkCard, Steps } from '@astrojs/starlight/components';
 5. 在 **Permissions** 下，打开 **Account** 选项卡，选择 **Add permissions**，然后选择 **Copilot Requests**。
 
 6. 选择 **Generate token**，然后复制令牌。令牌只会显示这一次，它以 `github_pat_` 开头。
-
 
 7. 按照[添加或更改机密](#添加或更改机密)中的说明，把它存储为名为 `COPILOT_GITHUB_TOKEN` 的 Codespaces 机密，然后重启 Codespace。Vally 会先使用 `COPILOT_GITHUB_TOKEN`，然后才是 `GITHUB_TOKEN`；此时环境检查会报告 `COPILOT_GITHUB_TOKEN, a fine-grained personal access token`。
 

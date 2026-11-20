@@ -10,6 +10,7 @@ import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
 import Flow from '../../../../components/Flow.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="20 分钟" cost="3 次 Copilot 运行和约 11 次评审调用，计入你的 Copilot 计划" uses="evals/judge-controls.eval.yaml, evals/release-notes-judged.eval.yaml" />
 
@@ -31,6 +32,29 @@ import Flow from '../../../../components/Flow.astro';
   checks={{ text: '和之前一样的代码检查项' }}
   judge={{ text: 'Copilot 上的 <code>gpt-5.6-luna</code>，使用你的评分标准', state: 'new' }}
   results={{ text: '评审对每个答案给出的判定结果和理由', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally eval -e evals/release-notes-judged.eval.yaml"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: '带修复后的技能' },
+    { id: 'checks', name: '代码检查项', icon: 'approve-check', tone: 'check', note: '练习 3 中的五项' },
+    { id: 'judge', name: 'LLM 评审', icon: 'star', tone: 'judge', note: '<code>gpt-5.6-luna</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '启动运行', detail: '三次试验；评审模型是一个参数（param）：<code>JUDGE_MODEL</code>。' },
+    { from: 'vally', to: 'agent', text: '发送提示词', detail: '在一个全新的工作区中，带有修复后的技能和 <code>backlog.json</code>。' },
+    { from: 'agent', to: 'vally', text: '回答', detail: 'Vally 保留答案、运行记录和工作区。' },
+    { from: 'vally', to: 'checks', text: '交出证据', detail: '检查事实：包含 CT-101 和 CT-103、不含 CT-102、用了技能、待办事项列表未改动。' },
+    { from: 'checks', to: 'vally', text: '通过或失败，并附上证据' },
+    { from: 'vally', to: 'judge', text: '发送运行记录和你的评分标准', detail: '智能体的输出、指标和会话时间线。', state: 'new' },
+    { from: 'judge', to: 'vally', text: '通过或失败，并给出理由', detail: '理由就是证据：像阅读检查项的证据那样阅读它。', state: 'new' },
+    { from: 'vally', text: '写入结果', detail: '只有所有检查项和评审都通过，这次试验才算通过。' },
+  ]}
+  repeat={{ first: 2, last: 7, label: '对 3 次试验中的每一次，并行进行' }}
+  caption='在这次运行之前，你会先用模拟执行器和已知答案校准评审，不运行智能体。'
 />
 
 ## 你会用到的要素

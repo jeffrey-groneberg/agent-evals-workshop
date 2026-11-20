@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="15 分钟" cost="6 次 Copilot 运行；如果重新运行评估（eval），再加 3 次" uses=".github/skills/release-notes/SKILL.md, experiments/skill-fix.experiment.yaml" />
 
@@ -29,6 +30,25 @@ import Pieces from '../../../../components/Pieces.astro';
   trials={{ text: '每个变体 3 次，共 6 次' }}
   checks={{ text: '答案、运行记录（transcript）和工作区，与练习 3 相同' }}
   results={{ text: '实验对比、<code>report.md</code>、仪表板', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally experiment run experiments/skill-fix.experiment.yaml"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'before', name: '基线：before', icon: 'puzzle', tone: 'muted', note: '原来的技能' },
+    { id: 'after', name: '变体：after', icon: 'puzzle', tone: 'agent', note: '你修复后的技能' },
+    { id: 'report', name: '报告', icon: 'analytics', tone: 'files', note: '<code>report.md</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '启动实验', detail: '一个评估，两个只在技能上不同的变体。', state: 'new' },
+    { from: 'vally', to: 'before', text: '用原来的技能运行评估', detail: '三次试验，每次都在全新的工作区中，与练习 3 相同。' },
+    { from: 'before', to: 'vally', text: '判定结果、token 和耗时', detail: '基线：原来的技能表现如何。' },
+    { from: 'vally', to: 'after', text: '用你的修复运行同一个评估', detail: '同样的模型、同样的检查项、同样的三次试验。', state: 'changed' },
+    { from: 'after', to: 'vally', text: '判定结果、token 和耗时', detail: '变体：你的这一处改动带来了什么。' },
+    { from: 'vally', to: 'report', text: '写出对比', detail: '通过率、token 和耗时并排列出，保存在 <code>report.md</code> 中。', state: 'new' },
+  ]}
 />
 
 ## 你将用到的要素

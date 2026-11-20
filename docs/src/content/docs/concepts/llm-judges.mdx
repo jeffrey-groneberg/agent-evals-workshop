@@ -4,7 +4,7 @@ description: How an LLM judge grades an answer against a rubric, how to write a 
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
-import Flow from '../../../components/Flow.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![The peach robot judge at a desk examines a release-notes card with a magnifying glass, beside a rubric clipboard and a balance scale; the teal robot agent waits with the next card.](../../../assets/llm-judges.jpg)
@@ -13,13 +13,19 @@ import Flow from '../../../components/Flow.astro';
 
 Some qualities can't be checked with a string match. Does the release note *start* with a summary sentence? Is the tone friendly? Does a note "announce" CT-102 or merely explain why it's missing? For questions like these, you ask a second model to read the answer and decide. That model is an **LLM judge**.
 
-<Flow
-  label="How an LLM judge grades one trial"
+<RunDiagram
+  title={'What happens when an LLM judge grades a trial'}
+  actors={[
+    { id: 'agent', name: 'Agent', icon: 'laptop', tone: 'agent' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'judge', name: 'LLM judge', icon: 'star', tone: 'judge', note: 'the judge model' },
+  ]}
   steps={[
-    { label: 'Answer', detail: 'The agent\'s output (and, if needed, its transcript)', tone: 'agent' },
-    { label: 'Rubric', detail: 'Your criteria, one per line', tone: 'input' },
-    { label: 'Judge model', detail: 'Reads both, decides each criterion', tone: 'grader' },
-    { label: 'Verdict', detail: 'Pass or fail, a score and its reasoning', tone: 'result' },
+    { from: 'agent', to: 'vally', text: 'Finishes a trial', detail: 'Its trajectory: the output, the metrics and the session timeline.' },
+    { from: 'vally', to: 'judge', text: 'Sends the evidence and your rubric', detail: 'The rubric is the judge\'s whole specification.' },
+    { from: 'judge', text: 'Decides each criterion', detail: 'Reads the evidence against every line of the rubric.' },
+    { from: 'judge', to: 'vally', text: 'Verdict, score and reasoning', detail: 'With <code>scoring: binary</code>, pass or fail.' },
+    { from: 'vally', text: 'Records a grader result', detail: 'The reasoning is the evidence you read when it fails.' },
   ]}
 />
 

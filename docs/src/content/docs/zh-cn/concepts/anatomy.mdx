@@ -4,8 +4,8 @@ description: 每个评估都有的组成部分（任务、智能体、环境、�
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
-import Flow from '../../../../components/Flow.astro';
 import Pieces from '../../../../components/Pieces.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![一条从左到右的流水线：一张任务卡片；玻璃工作间里的蓝绿色机器人智能体，身边有一个文件夹和几份文档；一卷展开的运行记录；一个放大镜、一张检查清单和一个拿着写字板的桃色机器人评审；最后是一个带绿色对勾的分数仪表。](../../../../assets/anatomy.jpg)
@@ -18,15 +18,23 @@ import Pieces from '../../../../components/Pieces.astro';
 
 **试验**（trial）是一个任务的一次运行。每次试验都会经历以下步骤：
 
-<Flow
-  label="一次试验中发生了什么"
+<RunDiagram
+  title={'一次试验中发生了什么'}
+  actors={[
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'agent', name: '被测智能体', icon: 'laptop', tone: 'agent', note: '由执行器启动' },
+    { id: 'graders', name: '评分器', icon: 'approve-check', tone: 'check', note: '检查项和评审' },
+    { id: 'record', name: '试验记录', icon: 'analytics', tone: 'files', note: '<code>results.jsonl</code>' },
+  ]}
   steps={[
-    { label: '任务', detail: '提示词及其输入（在 Vally 中叫 stimulus）', tone: 'input' },
-    { label: '环境', detail: '包含技能（skill）和文件的全新工作区', tone: 'input' },
-    { label: '智能体工作', detail: '执行器运行被测智能体', tone: 'agent' },
-    { label: '运行记录和产出结果', detail: '它做了什么，留下了什么', tone: 'agent' },
-    { label: '评分器', detail: '每个检查项返回通过或失败、分数和证据', tone: 'grader' },
-    { label: '判定结果', detail: '将分数与阈值比较：通过或失败', tone: 'result' },
+    { from: 'vally', text: '取一个任务', detail: '在 Vally 中称为 stimulus：提示词及其输入。' },
+    { from: 'vally', text: '准备环境', detail: '一个全新的工作区，带有任务需要的技能和文件。' },
+    { from: 'vally', to: 'agent', text: '执行器启动智能体', detail: '并发送提示词。<code>copilot-sdk</code> 运行的是 GitHub Copilot。' },
+    { from: 'agent', text: '开始工作', detail: '回合、工具调用、技能使用：运行记录（transcript）会逐一记下。' },
+    { from: 'agent', to: 'vally', text: '完成', detail: '给出答案，并留下一个可能已被改动的工作区。' },
+    { from: 'vally', to: 'graders', text: '交出证据', detail: '每个评分器读取答案、运行记录或工作区。' },
+    { from: 'graders', to: 'vally', text: '通过或失败、分数和证据', detail: '每个评分器一个结果。' },
+    { from: 'vally', to: 'record', text: '记录判定结果', detail: '分数与阈值比较：这次试验通过或失败。' },
   ]}
 />
 

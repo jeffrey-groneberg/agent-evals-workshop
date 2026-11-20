@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
 import Pieces from '../../../components/Pieces.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="30 minutes, self-paced" cost="3 Copilot runs per pull request, in GitHub Actions" uses="Your own copy of the repository" />
 
@@ -29,6 +30,26 @@ Your skill passes now. The eval's job changes: from "can the agent do this yet?"
   trials={{ text: '3 per pull request' }}
   checks={{ text: 'Answer, transcript and workspace, as in Lab 3' }}
   results={{ text: 'A check and a comment on the pull request', state: 'new' }}
+/>
+
+<RunDiagram
+  command="gh pr create --fill"
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'pr', name: 'Pull request', icon: 'code-branch', tone: 'you', note: 'on GitHub' },
+    { id: 'actions', name: 'GitHub Actions', icon: 'server', tone: 'runner', note: 'the Evals workflow' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'with GitHub Copilot' },
+  ]}
+  steps={[
+    { from: 'you', to: 'pr', text: 'Opens a pull request', detail: 'It changes the skill, so the workflow\'s paths match.' },
+    { from: 'pr', to: 'actions', text: 'Starts the Evals workflow', detail: 'For every pull request that changes the skill or the evals.' },
+    { from: 'actions', text: 'Signs in and installs Vally', detail: 'With the job\'s own token and <code>copilot-requests: write</code>: no secret needed.', state: 'new' },
+    { from: 'actions', to: 'vally', text: 'Runs the smoke suite', detail: 'Lint first, then every eval tagged <code>lane: ci</code>, with <code>--require-pass</code>.', state: 'new' },
+    { from: 'vally', text: 'Runs the trials and the checks', detail: 'Three trials of the agent, five checks each, as in Lab 3.' },
+    { from: 'vally', to: 'actions', text: 'Verdicts and evidence', detail: 'A failed eval fails the job.' },
+    { from: 'actions', to: 'pr', text: 'Posts a check and one comment', detail: 'The comment shows the score, the threshold and the tokens.', state: 'new' },
+    { from: 'pr', to: 'you', text: 'Shows the result', detail: 'Merge when it\'s green; otherwise read the evidence and fix.' },
+  ]}
 />
 
 ## The pieces you'll work with

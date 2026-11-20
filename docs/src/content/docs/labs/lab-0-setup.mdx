@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
 import Pieces from '../../../components/Pieces.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="20 minutes" cost="1 Copilot run" uses="Your Codespace or local terminal" />
 
@@ -29,6 +30,26 @@ Before you write a real eval, make sure the whole chain works: your terminal, th
   trials={{ text: '1', state: 'new' }}
   checks={{ text: '<code>output-contains</code> on the answer', state: 'new' }}
   results={{ text: 'Run folder, trial record, dashboard', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally eval -e lab-files/lab-0/setup-check.eval.yaml"
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: '<code>claude-sonnet-5.5</code>' },
+    { id: 'checks', name: 'Check', icon: 'approve-check', tone: 'check', note: '<code>answer-says-ready</code>' },
+    { id: 'results', name: 'Results', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Vally reads the eval file: one task, one trial.', state: 'new' },
+    { from: 'vally', text: 'Builds a fresh, empty workspace', detail: 'And starts GitHub Copilot in it, with your sign-in.', state: 'new' },
+    { from: 'vally', to: 'agent', text: 'Sends the prompt', detail: '"Reply with the single word READY and nothing else. Do not use any tools."' },
+    { from: 'agent', to: 'vally', text: 'Answers <code>READY</code>', detail: 'No tools needed: one turn, about 20,000 tokens.' },
+    { from: 'vally', to: 'checks', text: 'Hands over the answer', detail: 'The check looks for <code>READY</code> in it.' },
+    { from: 'checks', to: 'vally', text: 'Pass, with evidence', detail: 'An error instead means the run itself failed, for example the sign-in.' },
+    { from: 'vally', to: 'results', text: 'Writes the results', detail: '<code>eval-results.md</code>, <code>results.jsonl</code> and the trial\'s folder.', state: 'new' },
+  ]}
 />
 
 ## The pieces you'll work with

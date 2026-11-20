@@ -10,6 +10,7 @@ import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
 import Pieces from '../../../components/Pieces.astro';
 import Flow from '../../../components/Flow.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="20 minutes" cost="3 Copilot runs and about 11 judge calls, on your Copilot plan" uses="evals/judge-controls.eval.yaml, evals/release-notes-judged.eval.yaml" />
 
@@ -31,6 +32,29 @@ Two of your criteria from Lab 1 can't be checked with a string: "starts with one
   checks={{ text: 'The code checks, as before' }}
   judge={{ text: '<code>gpt-5.6-luna</code> on Copilot, with your rubric', state: 'new' }}
   results={{ text: 'The judge\'s verdict and reasoning per answer', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally eval -e evals/release-notes-judged.eval.yaml"
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: 'with the fixed skill' },
+    { id: 'checks', name: 'Code checks', icon: 'approve-check', tone: 'check', note: 'the five from Lab 3' },
+    { id: 'judge', name: 'LLM judge', icon: 'star', tone: 'judge', note: '<code>gpt-5.6-luna</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Three trials; the judge model is a param, <code>JUDGE_MODEL</code>.' },
+    { from: 'vally', to: 'agent', text: 'Sends the prompt', detail: 'In a fresh workspace with the fixed skill and <code>backlog.json</code>.' },
+    { from: 'agent', to: 'vally', text: 'Answers', detail: 'Vally keeps the answer, the transcript and the workspace.' },
+    { from: 'vally', to: 'checks', text: 'Hands over the evidence', detail: 'The facts: CT-101 and CT-103 in, CT-102 out, skill used, backlog unchanged.' },
+    { from: 'checks', to: 'vally', text: 'Pass or fail, with evidence' },
+    { from: 'vally', to: 'judge', text: 'Sends the trajectory and your rubric', detail: 'The agent\'s output, its metrics and the session timeline.', state: 'new' },
+    { from: 'judge', to: 'vally', text: 'Pass or fail, with its reasoning', detail: 'The reasoning is the evidence: read it as you read a check\'s.', state: 'new' },
+    { from: 'vally', text: 'Writes the results', detail: 'A trial passes only if every check and the judge pass.' },
+  ]}
+  repeat={{ first: 2, last: 7, label: 'For each of the 3 trials, in parallel' }}
+  caption='Before this run, you calibrate the judge on known answers, with the mock executor and no agent.'
 />
 
 ## The pieces you'll work with

@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
 import Pieces from '../../../components/Pieces.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="10 minutes" cost="None" uses="Pen and paper, or a scratch file" />
 
@@ -26,6 +27,24 @@ An eval can only measure what you've defined. In this lab you write down what "g
   task={{ text: 'Write the release notes from <code>backlog.json</code>', state: 'new' }}
   checks={{ text: 'Your criteria, on paper: must and must not', state: 'new' }}
   results={{ text: 'Your verdicts on four answers', state: 'new' }}
+/>
+
+<RunDiagram
+  title={'Where your definition of good goes'}
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: 'the agent under test' },
+    { id: 'checks', name: 'Checks', icon: 'approve-check', tone: 'check', note: 'your criteria' },
+  ]}
+  steps={[
+    { from: 'you', text: 'Write down what good means', detail: 'What the release notes must and must not do, before any run.', state: 'new' },
+    { from: 'you', text: 'Judge four answers by hand', detail: 'Apply your criteria the way a check would.', state: 'new' },
+    { from: 'you', to: 'checks', text: 'Turn each criterion into a check', detail: 'In an eval file, tested with known answers.', state: 'muted', badge: 'Lab 2' },
+    { from: 'vally', to: 'agent', text: 'The agent does the task', detail: 'Several trials, each in a fresh workspace.', state: 'muted', badge: 'Lab 3' },
+    { from: 'vally', to: 'checks', text: 'Every answer meets your checks', detail: 'Pass or fail, with evidence, for every trial.', state: 'muted', badge: 'Lab 3' },
+  ]}
+  caption='This lab is the first two steps: no tools, no model. Labs 2 and 3 add the rest.'
 />
 
 ## The pieces you'll work with

@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="30 分钟，自定进度" cost="每个拉取请求在 GitHub Actions 中进行 3 次 Copilot 运行" uses="你自己的存储库副本" />
 
@@ -29,6 +30,26 @@ import Pieces from '../../../../components/Pieces.astro';
   trials={{ text: '每个拉取请求 3 次' }}
   checks={{ text: '答案、运行记录（transcript）和工作区，与练习 3 相同' }}
   results={{ text: '拉取请求上的一项检查和一条评论', state: 'new' }}
+/>
+
+<RunDiagram
+  command="gh pr create --fill"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'pr', name: '拉取请求', icon: 'code-branch', tone: 'you', note: '在 GitHub 上' },
+    { id: 'actions', name: 'GitHub Actions', icon: 'server', tone: 'runner', note: 'Evals 工作流' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '运行 GitHub Copilot' },
+  ]}
+  steps={[
+    { from: 'you', to: 'pr', text: '创建拉取请求', detail: '它修改了技能，因此符合工作流的路径条件。' },
+    { from: 'pr', to: 'actions', text: '启动 Evals 工作流', detail: '每个修改了技能或评估的拉取请求都会触发它。' },
+    { from: 'actions', text: '登录并安装 Vally', detail: '使用作业自己的令牌和 <code>copilot-requests: write</code>：不需要机密。', state: 'new' },
+    { from: 'actions', to: 'vally', text: '运行 smoke 套件', detail: '先运行 lint，再运行所有带 <code>lane: ci</code> 标签的评估，并使用 <code>--require-pass</code>。', state: 'new' },
+    { from: 'vally', text: '运行试验和检查项', detail: '智能体运行三次试验，每次五项检查，与练习 3 相同。' },
+    { from: 'vally', to: 'actions', text: '判定结果和证据', detail: '评估失败，作业就会失败。' },
+    { from: 'actions', to: 'pr', text: '发布检查结果和一条评论', detail: '评论中列出分数、阈值和 token 用量。', state: 'new' },
+    { from: 'pr', to: 'you', text: '显示结果', detail: '通过时就合并；否则阅读证据并修复。' },
+  ]}
 />
 
 ## 你会用到的要素

@@ -4,6 +4,7 @@ description: Vally 能做什么，GitHub Copilot Evals 在此基础上增加了�
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![一个深色终端窗口立在一个装满齿轮的盒子（评估引擎）上，一根青绿色线缆把它连到一个带闪光图标的聊天助手面板；两者之间放着一份共享的文档文件。](../../../../assets/tools.jpg)
@@ -11,6 +12,24 @@ import { LinkCard } from '@astrojs/starlight/components';
 </figure>
 
 本工作坊使用两个协同工作的工具。**Vally** 是运行评估（eval）的引擎。**GitHub Copilot Evals** 是构建在它之上的助手：Copilot 帮你创建、审查、改进、运行和比较评估，而每一次运行仍然在 Vally 中进行。
+
+<RunDiagram
+  title={'两个工具如何协同工作'}
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'evals', name: 'GitHub Copilot Evals', icon: 'comment-alt', tone: 'agent', note: '助手' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '引擎' },
+    { id: 'files', name: '你的文件', icon: 'document', tone: 'files', note: '评估和结果' },
+  ]}
+  steps={[
+    { from: 'you', to: 'evals', text: '用自然语言提出请求', detail: '创建、审查、改进、运行或比较评估。' },
+    { from: 'evals', to: 'files', text: '起草或审查评估文件', detail: '保存任何内容之前，先向你展示完整的文件。' },
+    { from: 'you', to: 'vally', text: '或者直接运行它', detail: '对同一个文件运行 <code>vally eval</code>。' },
+    { from: 'evals', to: 'vally', text: '在你批准后运行它', detail: '使用受限运行器或完整引擎。' },
+    { from: 'vally', to: 'files', text: '写入结果', detail: '无论哪种方式，都写入 <code>vally-results/</code>。' },
+    { from: 'evals', to: 'you', text: '解释和比较', detail: '读取和比较已保存的运行不会调用模型。' },
+  ]}
+/>
 
 ## Vally：引擎
 

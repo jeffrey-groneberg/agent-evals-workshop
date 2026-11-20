@@ -5,6 +5,7 @@ description: 代码评分器、LLM 评审和人工审阅；肯定检查和否定
 
 import { LinkCard } from '@astrojs/starlight/components';
 import Flow from '../../../../components/Flow.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![一张发布说明卡片，中间一行被标成红色，正以三种方式接受检查：放大镜代表代码检查；拿着评分标准写字板的桃色机器人代表 LLM 评审；眼睛代表人。写这张卡片的蓝绿色机器人站在下方。](../../../../assets/graders.jpg)
@@ -12,6 +13,24 @@ import Flow from '../../../../components/Flow.astro';
 </figure>
 
 **评分器**（grader）判断一次试验是否做到了你想要的结果。它查看回答、运行记录（transcript）或工作区，并返回三样东西：**通过或失败**、一个 0 到 1 之间的**分数**，以及**证据**，也就是它做出判定的理由。评估（eval）的好坏取决于它的评分器：如果评分器分不清好回答和坏回答，所有分数就都失去了意义。
+
+<RunDiagram
+  title={'一次试验如何被评分'}
+  actors={[
+    { id: 'agent', name: '智能体', icon: 'laptop', tone: 'agent' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'code', name: '代码检查项', icon: 'approve-check', tone: 'check', note: '免费、即时' },
+    { id: 'judge', name: 'LLM 评审', icon: 'star', tone: 'judge', note: '另一个模型' },
+  ]}
+  steps={[
+    { from: 'agent', to: 'vally', text: '完成一次试验', detail: '留下三类证据：答案、运行记录、工作区。' },
+    { from: 'vally', to: 'code', text: '交出证据', detail: '每个检查项读取它需要的那部分。' },
+    { from: 'code', to: 'vally', text: '通过或失败，并附上证据', detail: '每次结果都一样，而且不花钱。' },
+    { from: 'vally', to: 'judge', text: '发送运行记录和评分标准', detail: '用于字符串匹配看不出来的质量。' },
+    { from: 'judge', to: 'vally', text: '判定结果和理由', detail: '一次模型调用：需要几秒钟，并消耗 token。' },
+    { from: 'vally', text: '为试验打分', detail: '所有结果与阈值比较：通过或失败。' },
+  ]}
+/>
 
 ## 三种评分器
 

@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
 import Pieces from '../../../components/Pieces.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="15 minutes" cost="6 Copilot runs, plus 3 if you rerun the eval" uses=".github/skills/release-notes/SKILL.md, experiments/skill-fix.experiment.yaml" />
 
@@ -29,6 +30,25 @@ You know the cause: the skill's first rule. Now you fix it, and then you prove t
   trials={{ text: '3 per variant, 6 in all' }}
   checks={{ text: 'Answer, transcript and workspace, as in Lab 3' }}
   results={{ text: 'Experiment comparison, <code>report.md</code>, dashboard', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally experiment run experiments/skill-fix.experiment.yaml"
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'before', name: 'Baseline: before', icon: 'puzzle', tone: 'muted', note: 'the original skill' },
+    { id: 'after', name: 'Variant: after', icon: 'puzzle', tone: 'agent', note: 'your fixed skill' },
+    { id: 'report', name: 'Report', icon: 'analytics', tone: 'files', note: '<code>report.md</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: 'Starts the experiment', detail: 'One eval, two variants that differ only in the skill.', state: 'new' },
+    { from: 'vally', to: 'before', text: 'Runs the eval with the original skill', detail: 'Three trials, each in a fresh workspace, as in Lab 3.' },
+    { from: 'before', to: 'vally', text: 'Verdicts, tokens, time', detail: 'The baseline: what the original skill does.' },
+    { from: 'vally', to: 'after', text: 'Runs the same eval with your fix', detail: 'Same model, same checks, same three trials.', state: 'changed' },
+    { from: 'after', to: 'vally', text: 'Verdicts, tokens, time', detail: 'The variant: what your one change does.' },
+    { from: 'vally', to: 'report', text: 'Writes the comparison', detail: 'Pass rates, tokens and time side by side, in <code>report.md</code>.', state: 'new' },
+  ]}
 />
 
 ## The pieces you'll work with

@@ -9,7 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
-import Flow from '../../../../components/Flow.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="15 分钟，课后可继续深入" cost="若干条 Copilot 提示词和两次简短运行" uses="装有 Evals 插件的 Copilot CLI" />
 
@@ -32,6 +32,29 @@ import Flow from '../../../../components/Flow.astro';
   results={{ text: 'Copilot 的摘要、Vally 生成的文件和插件的记录', state: 'changed' }}
 />
 
+<RunDiagram
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'copilot', name: 'Copilot CLI', icon: 'comment-alt', tone: 'runner', note: '装有 Evals 插件' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '完整引擎' },
+    { id: 'agent', name: '被测智能体', icon: 'laptop', tone: 'agent', note: 'GitHub Copilot' },
+    { id: 'results', name: '结果', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'copilot', text: '用自然语言提出请求', detail: '“Run the eval you just created.”' },
+    { from: 'copilot', text: '准备运行', detail: 'run 技能读取你的评估文件。3 次试验加一个评审，意味着要用完整引擎。', state: 'new' },
+    { from: 'copilot', to: 'you', text: '展示审核内容', detail: '运行器、试验次数、模型、费用，以及哪些内容不受限制。', state: 'new' },
+    { from: 'you', to: 'copilot', text: '批准这次运行', detail: '每次运行都需要单独批准。' },
+    { from: 'copilot', to: 'vally', text: '启动 Vally', detail: '使用你设置好的运行器，以及 GitHub CLI 已存储的登录凭据。' },
+    { from: 'vally', to: 'agent', text: '发送提示词', detail: '在一个全新的工作区中，基于插件为你的文件准备的副本。' },
+    { from: 'agent', to: 'vally', text: '回答，然后接受评分', detail: '由你草稿中的检查项和评审评分。' },
+    { from: 'vally', to: 'results', text: '写入结果', detail: '<code>vally-results/eval-run-&lt;id&gt;/</code>，其中没有 <code>results.jsonl</code>。' },
+    { from: 'copilot', to: 'you', text: '解释结果', detail: '依据它自己在 <code>.copilot/evals/results/</code> 中的记录。', state: 'new' },
+  ]}
+  repeat={{ first: 6, last: 7, label: '对 3 次试验中的每一次' }}
+  caption='小型评估（只有 1 次试验、没有评审）会改用受限运行器，审核内容也更短。'
+/>
+
 ## 你将用到的要素
 
 <Pieces
@@ -51,17 +74,6 @@ import Flow from '../../../../components/Flow.astro';
 Copilot 一分钟就能起草一个评估。但这个评估衡量的是不是正确的东西，仍然要由你来判断。现在你已经知道该看什么：清晰的任务、正确的环境、否定检查、针对运行记录（transcript）和工作区的检查项，以及足够多的试验。本练习以你今后的工作方式为工作坊收尾：Copilot 负责打字，你负责评判。
 
 ## Copilot 如何运行评估
-
-<Flow
-  label="当你请 Copilot 运行评估时会发生什么"
-  steps={[
-    { label: '你提出请求', detail: '用自然语言', tone: 'input' },
-    { label: 'Copilot 制定计划', detail: 'run 技能', tone: 'agent' },
-    { label: '选定运行器', detail: '由评估文件决定', tone: 'grader' },
-    { label: '你来批准', detail: '确切的计划', tone: 'input' },
-    { label: 'Vally 执行', detail: '随后 Copilot 解释结果', tone: 'result' },
-  ]}
-/>
 
 Copilot 并不自己运行评估：它把评估交给 Vally，通过两种运行器之一来运行。
 

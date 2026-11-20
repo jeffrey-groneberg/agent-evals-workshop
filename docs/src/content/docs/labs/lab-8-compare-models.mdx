@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
 import Pieces from '../../../components/Pieces.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="20 minutes, self-paced" cost="6 Copilot runs; part B uses your own endpoint" uses="experiments/models.experiment.yaml" />
 
@@ -31,6 +32,26 @@ A new model comes out. Is it better *for your agent*? Benchmarks can't tell you;
   trials={{ text: '3 per model' }}
   checks={{ text: 'Answer, transcript and workspace, as in Lab 3' }}
   results={{ text: 'Experiment comparison, dashboard' }}
+/>
+
+<RunDiagram
+  command="vally experiment run experiments/models.experiment.yaml"
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'a', name: 'Model A', icon: 'laptop', tone: 'agent', note: '<code>claude-sonnet-5.5</code>' },
+    { id: 'b', name: 'Model B', icon: 'laptop', tone: 'agent', note: '<code>gpt-5.6-luna</code>' },
+    { id: 'report', name: 'Comparison', icon: 'analytics', tone: 'files', note: 'report and dashboard' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: 'Starts the experiment', detail: 'One eval, two variants that differ only in <code>model</code>.' },
+    { from: 'vally', to: 'a', text: 'Runs the eval on model A', detail: 'Three trials with the fixed skill and the same five checks.', state: 'changed' },
+    { from: 'a', to: 'vally', text: 'Verdicts, tokens, time' },
+    { from: 'vally', to: 'b', text: 'Runs the same eval on model B', detail: 'Everything else stays identical.', state: 'changed' },
+    { from: 'b', to: 'vally', text: 'Verdicts, tokens, time' },
+    { from: 'vally', to: 'report', text: 'Writes the comparison', detail: 'Pass rate, tokens and time per model; the answers are in the trial records.' },
+  ]}
+  caption='In part B, optional, the agent runs on your own model endpoint instead.'
 />
 
 ## The pieces you'll work with

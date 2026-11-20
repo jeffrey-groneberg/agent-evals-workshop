@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="10 分钟" cost="无" uses="纸和笔，或一个草稿文件" />
 
@@ -26,6 +27,24 @@ import Pieces from '../../../../components/Pieces.astro';
   task={{ text: '根据 <code>backlog.json</code> 编写发布说明', state: 'new' }}
   checks={{ text: '你写在纸上的标准：必须做到的和绝不能做的', state: 'new' }}
   results={{ text: '你对四个答案的判定结果', state: 'new' }}
+/>
+
+<RunDiagram
+  title={'你对“好”的定义用在哪里'}
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: '被测智能体' },
+    { id: 'checks', name: '检查项', icon: 'approve-check', tone: 'check', note: '你的标准' },
+  ]}
+  steps={[
+    { from: 'you', text: '写下什么是“好”', detail: '在任何运行之前，写下发布说明必须做到什么、绝不能做什么。', state: 'new' },
+    { from: 'you', text: '手动评判四个答案', detail: '像检查项那样应用你的标准。', state: 'new' },
+    { from: 'you', to: 'checks', text: '把每条标准变成检查项', detail: '写进评估文件，并用已知答案测试。', state: 'muted', badge: '练习 2' },
+    { from: 'vally', to: 'agent', text: '智能体完成任务', detail: '多次试验，每次都在全新的工作区中。', state: 'muted', badge: '练习 3' },
+    { from: 'vally', to: 'checks', text: '每个答案都要经过你的检查项', detail: '每次试验都会得到通过或失败的结果，并附有证据。', state: 'muted', badge: '练习 3' },
+  ]}
+  caption='本练习只涉及前两步：不用工具，也不用模型。练习 2 和练习 3 会补上其余步骤。'
 />
 
 ## 你将用到的要素

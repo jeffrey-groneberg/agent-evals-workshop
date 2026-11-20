@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import Pieces from '../../../../components/Pieces.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="30 分钟" cost="3 次 Copilot 运行" uses="evals/release-notes.eval.yaml" />
 
@@ -29,6 +30,28 @@ import EvalMap from '../../../../components/EvalMap.astro';
   trials={{ text: '3 次，并行运行', state: 'new' }}
   checks={{ text: '答案、运行记录和工作区', state: 'new' }}
   results={{ text: '仪表板、试验记录、Copilot 的日志', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally eval -e evals/release-notes.eval.yaml"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: '<code>release-notes</code> 技能' },
+    { id: 'checks', name: '检查项', icon: 'approve-check', tone: 'check', note: '五项代码检查' },
+    { id: 'results', name: '结果', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '启动运行', detail: '评估文件要求进行三次试验：<code>runs: 3</code>。' },
+    { from: 'vally', text: '创建全新的工作区', detail: '技能和 <code>backlog.json</code> 的副本，每次试验都是新的。', state: 'new' },
+    { from: 'vally', to: 'agent', text: '发送提示词', detail: '“Write the release notes for this release from backlog.json.”' },
+    { from: 'agent', text: '完成工作', detail: '调用技能，读取 <code>backlog.json</code>，写出发布说明。运行记录（transcript）会记下每一步。', state: 'new' },
+    { from: 'agent', to: 'vally', text: '回答', detail: 'Vally 保留答案、运行记录和工作区。' },
+    { from: 'vally', to: 'checks', text: '交出证据', detail: '三项检查读取答案，一项读取运行记录，一项读取工作区。', state: 'new' },
+    { from: 'checks', to: 'vally', text: '通过或失败，并附上证据', detail: '只有五项全部通过，这次试验才算通过：<code>threshold: 1</code>。' },
+    { from: 'vally', to: 'results', text: '写入结果', detail: '<code>eval-results.md</code>、<code>results.jsonl</code>，以及每次试验一个文件夹。' },
+  ]}
+  repeat={{ first: 2, last: 7, label: '对 3 次试验中的每一次，并行进行' }}
 />
 
 ## 你将用到的要素

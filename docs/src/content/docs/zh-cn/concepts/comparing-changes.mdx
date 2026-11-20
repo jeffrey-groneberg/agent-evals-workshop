@@ -4,7 +4,7 @@ description: 借助基线、变体和受控实验，证明确实是某项变更�
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
-import Flow from '../../../../components/Flow.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![两条完全相同的通道，每条都有相同的请求和同一个青绿色机器人智能体。唯一的区别在于说明书：右边那份修改了一行。左边通道的尽头是三个红叉，右边通道的尽头是三个绿勾。](../../../../assets/comparing.jpg)
@@ -19,13 +19,22 @@ import Flow from '../../../../components/Flow.astro';
 - **变体**是“之后”的版本：同一个评估，只做了一处有意的修改，比如修复后的技能、换用另一个模型，或者改写过的提示词。
 - 其他一切都保持完全相同：任务、评分器、模型、设置以及试验次数。
 
-<Flow
-  label="一次受控实验"
+<RunDiagram
+  title={'实验中发生了什么'}
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'baseline', name: '基线', icon: 'puzzle', tone: 'muted', note: '“之前”的版本' },
+    { id: 'variant', name: '变体', icon: 'puzzle', tone: 'agent', note: '一处有意的改动' },
+    { id: 'report', name: '报告', icon: 'analytics', tone: 'files' },
+  ]}
   steps={[
-    { label: '同一个评估', detail: '相同的任务、评分器和设置', tone: 'input' },
-    { label: '基线', detail: '原来的技能', tone: 'muted' },
-    { label: '变体', detail: '修复后的技能：唯一的差异', tone: 'agent' },
-    { label: '报告', detail: '并排列出通过率，并给出差值', tone: 'result' },
+    { from: 'you', to: 'vally', text: '启动实验', detail: '一个评估、一个基线和一个变体。' },
+    { from: 'vally', to: 'baseline', text: '运行评估', detail: '用原来的设置进行多次试验。' },
+    { from: 'baseline', to: 'vally', text: '判定结果、token 和耗时' },
+    { from: 'vally', to: 'variant', text: '运行同一个评估', detail: '除了那一处改动，其他一切都相同。' },
+    { from: 'variant', to: 'vally', text: '判定结果、token 和耗时' },
+    { from: 'vally', to: 'report', text: '进行比较', detail: '通过率并排列出，并给出差值。' },
   ]}
 />
 

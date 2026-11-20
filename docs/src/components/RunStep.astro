@@ -1,0 +1,36 @@
+---
+// One step of a RunDiagram: a message from one lane to another, or something a lane does by itself.
+interface Props {
+	n: number;
+	kind: 'self' | 'right' | 'left';
+	lo: number;
+	hi: number;
+	tone: string;
+	who: string;
+	whoSpoken: string;
+	text: string;
+	detail?: string;
+	badge?: string;
+	state?: 'new' | 'changed' | 'muted';
+	say: string;
+}
+const { n, kind, lo, hi, tone, who, whoSpoken, text, detail, badge, state, say } = Astro.props;
+---
+
+<li
+	class:list={['rd-step', `is-${kind}`, `rd-tone-${tone}`, state && `state-${state}`]}
+	style={`--lo: ${lo}; --hi: ${hi}`}
+	data-say={say}
+>
+	<span class="rd-num" aria-hidden="true">{n}</span>
+	<div class="rd-lane">
+		<div class={kind === 'self' ? 'rd-note' : 'rd-msg'}>
+			<span class="rd-who" aria-hidden="true">{who}</span>
+			<span class="rd-sr">{whoSpoken}</span>
+			<span class="rd-text" set:html={text} />
+			{badge && <span class="rd-badge">{badge}</span>}
+			{detail && <span class="rd-detail" set:html={detail} />}
+		</div>
+		{kind !== 'self' && <span class="rd-arrow" aria-hidden="true" />}
+	</div>
+</li>

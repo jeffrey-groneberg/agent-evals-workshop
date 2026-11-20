@@ -5,6 +5,7 @@ description: Code graders, LLM judges and human review; positive and negative ch
 
 import { LinkCard } from '@astrojs/starlight/components';
 import Flow from '../../../components/Flow.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![One release-notes card with its middle line marked red, examined three ways: by a magnifying glass, a code check; by a peach robot with a rubric clipboard, an LLM judge; and by an eye, a person. The teal robot that wrote the card stands below.](../../../assets/graders.jpg)
@@ -12,6 +13,24 @@ import Flow from '../../../components/Flow.astro';
 </figure>
 
 A **grader** decides whether a trial did what you wanted. It looks at the answer, the transcript or the workspace, and returns three things: **pass or fail**, a **score** from 0 to 1, and **evidence**, the reason for its decision. An eval is only as good as its graders: a grader that can't tell a good answer from a bad one makes every score meaningless.
+
+<RunDiagram
+  title={'What happens when a trial is graded'}
+  actors={[
+    { id: 'agent', name: 'Agent', icon: 'laptop', tone: 'agent' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'code', name: 'Code checks', icon: 'approve-check', tone: 'check', note: 'free, instant' },
+    { id: 'judge', name: 'LLM judge', icon: 'star', tone: 'judge', note: 'a second model' },
+  ]}
+  steps={[
+    { from: 'agent', to: 'vally', text: 'Finishes a trial', detail: 'Leaving three kinds of evidence: the answer, the transcript, the workspace.' },
+    { from: 'vally', to: 'code', text: 'Hands over the evidence', detail: 'Each check reads the part it needs.' },
+    { from: 'code', to: 'vally', text: 'Pass or fail, with evidence', detail: 'The same result every time, at no cost.' },
+    { from: 'vally', to: 'judge', text: 'Sends the trajectory and the rubric', detail: 'For qualities a string match can\'t see.' },
+    { from: 'judge', to: 'vally', text: 'Verdict and reasoning', detail: 'A model call: it takes seconds and costs tokens.' },
+    { from: 'vally', text: 'Scores the trial', detail: 'All results against the threshold: pass or fail.' },
+  ]}
+/>
 
 ## Three kinds of graders
 

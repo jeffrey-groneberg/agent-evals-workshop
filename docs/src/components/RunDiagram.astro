@@ -1,0 +1,707 @@
+---
+// What happens during a run, drawn as a sequence diagram: who takes part (one lane each), what passes
+// between them and what each one does, in order. A frame marks the steps that repeat for every trial.
+// Text props may contain inline HTML such as <code>. In a narrow column the lanes fold into a numbered
+// list. The script adds a "Play the run" button that steps through the run; without it, the diagram is
+// complete as it is.
+import { Icon } from '@astrojs/starlight/components';
+import RunStep from './RunStep.astro';
+
+type Tone = 'you' | 'runner' | 'agent' | 'check' | 'judge' | 'files' | 'muted';
+type State = 'new' | 'changed' | 'muted';
+interface Actor {
+	id: string;
+	name: string;
+	icon: string;
+	tone?: Tone;
+	note?: string;
+}
+interface Step {
+	from: string;
+	to?: string;
+	text: string;
+	detail?: string;
+	state?: State;
+	badge?: string;
+}
+interface Props {
+	actors: Actor[];
+	steps: Step[];
+	command?: string;
+	repeat?: { first: number; last: number; label: string };
+	caption?: string;
+	title?: string;
+}
+
+const { actors, steps, command, repeat, caption, title } = Astro.props;
+const zh = Astro.locals.starlightRoute.lang === 'zh-CN';
+const t = zh
+	? {
+			title: '运行时发生了什么',
+			play: '播放运行过程',
+			stop: '停止',
+			again: '再播放一次',
+			new: '新',
+			changed: '有变化',
+			actors: '参与方',
+			steps: '运行步骤',
+			to: (a: string, b: string) => `${a} 到 ${b}：`,
+			self: (a: string) => `${a}：`,
+			say: (n: number, who: string, text: string, detail: string) => `${n}. ${who}${text}${detail ? `。${detail}` : ''}`,
+			pace: 75,
+		}
+	: {
+			title: 'What happens during the run',
+			play: 'Play the run',
+			stop: 'Stop',
+			again: 'Play again',
+			new: 'new',
+			changed: 'changed',
+			actors: 'Who takes part',
+			steps: 'Steps of the run',
+			to: (a: string, b: string) => `${a} to ${b}: `,
+			self: (a: string) => `${a}: `,
+			say: (n: number, who: string, text: string, detail: string) => `${n}. ${who}${text}${detail ? `. ${detail}` : ''}`,
+			pace: 30,
+		};
+
+const plain = (html = '') => html.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+const lane = new Map(actors.map((actor, i) => [actor.id, i + 1]));
+const items = steps.map((step, i) => {
+	const from = lane.get(step.from);
+	const to = step.to === undefined ? from : lane.get(step.to);
+	if (from === undefined || to === undefined) throw new Error(`RunDiagram: step ${i + 1} names an unknown actor`);
+	const kind: 'self' | 'right' | 'left' = to === from ? 'self' : to > from ? 'right' : 'left';
+	const a = actors[from - 1].name;
+	const b = actors[to - 1].name;
+	const whoSpoken = kind === 'self' ? t.self(a) : t.to(a, b);
+	return {
+		n: i + 1,
+		kind,
+		lo: Math.min(from, to),
+		hi: Math.max(from, to),
+		tone: step.state === 'muted' ? 'muted' : (actors[from - 1].tone ?? 'runner'),
+		who: kind === 'self' ? a : `${a} → ${b}`,
+		whoSpoken,
+		text: step.text,
+		detail: step.detail,
+		state: step.state,
+		badge: step.badge ?? (step.state === 'new' ? t.new : step.state === 'changed' ? t.changed : undefined),
+		say: t.say(i + 1, whoSpoken, plain(step.text), plain(step.detail)),
+	};
+});
+const first = repeat ? repeat.first - 1 : items.length;
+const last = repeat ? repeat.last : items.length;
+const before = items.slice(0, first);
+const inside = items.slice(first, last);
+const after = items.slice(last);
+const uid = `rd-${[...(command ?? '') + steps.map((s) => s.text).join('|')]
+	.reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)
+	.toString(36)}`;
+---
+
+<figure class="rd not-content" data-run data-pace={t.pace} style={`--n: ${actors.length}`} aria-labelledby={uid}>
+	<figcaption class="rd-head">
+		<span class="rd-title" id={uid}>{title ?? t.title}</span>
+		{
+			command && (
+				<code class="rd-command">
+					<span class="rd-prompt" aria-hidden="true">
+						${' '}
+					</span>
+					{command}
+				</code>
+			)
+		}
+		<button
+			type="button"
+			class="rd-play"
+			hidden
+			aria-pressed="false"
+			data-play={t.play}
+			data-stop={t.stop}
+			data-again={t.again}
+		>
+			<svg class="rd-play-icon" viewBox="0 0 16 16" width="11" height="11" aria-hidden="true">
+				<path d="M4.5 2.75v10.5L13 8z" fill="currentColor"></path>
+			</svg>
+			<span class="rd-play-label">{t.play}</span>
+		</button>
+	</figcaption>
+	<div class="rd-body">
+		<ul class="rd-actors" role="list" aria-label={t.actors}>
+			{
+				actors.map((actor) => (
+					<li class:list={['rd-actor', `rd-tone-${actor.tone ?? 'runner'}`]}>
+						<span class="rd-actor-icon">
+							<Icon name={actor.icon as any} size="1.05rem" />
+						</span>
+						<span class="rd-actor-name">{actor.name}</span>
+						{actor.note && <span class="rd-actor-note" set:html={actor.note} />}
+					</li>
+				))
+			}
+		</ul>
+		<div class="rd-track">
+			<div class="rd-lifelines" aria-hidden="true">
+				{actors.map((_, i) => <span style={`--at: ${i + 1}`} />)}
+			</div>
+			<ol class="rd-steps" role="list" aria-label={t.steps}>
+				{before.map((step) => <RunStep {...step} />)}
+				{
+					repeat && inside.length > 0 && (
+						<li class="rd-repeat">
+							<span class="rd-repeat-label">{repeat.label}</span>
+							<ol class="rd-steps" role="list" start={inside[0].n}>
+								{inside.map((step) => (
+									<RunStep {...step} />
+								))}
+							</ol>
+						</li>
+					)
+				}
+				{after.map((step) => <RunStep {...step} />)}
+			</ol>
+		</div>
+	</div>
+	{caption && <p class="rd-caption" set:html={caption} />}
+	<p class="rd-sr rd-status" aria-live="polite"></p>
+</figure>
+
+<script>
+	const MIN = 1600;
+	const MAX = 4800;
+
+	function setup(figure: HTMLElement) {
+		const button = figure.querySelector<HTMLButtonElement>('.rd-play');
+		const label = figure.querySelector<HTMLElement>('.rd-play-label');
+		const status = figure.querySelector<HTMLElement>('.rd-status');
+		const steps = Array.from(figure.querySelectorAll<HTMLElement>('.rd-step'));
+		if (!button || !label || !status || steps.length === 0) return;
+		const pace = Number(figure.dataset.pace) || 30;
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+		let timer = 0;
+		let index = -1;
+
+		const mark = (current: number) => {
+			steps.forEach((step, i) => {
+				step.classList.toggle('is-current', i === current);
+				step.classList.toggle('is-done', i < current);
+				if (i === current) step.setAttribute('aria-current', 'step');
+				else step.removeAttribute('aria-current');
+			});
+		};
+		const stop = (finished: boolean) => {
+			window.clearTimeout(timer);
+			timer = 0;
+			index = -1;
+			figure.removeAttribute('data-playing');
+			mark(-1);
+			label.textContent = (finished ? button.dataset.again : button.dataset.play) ?? '';
+			button.setAttribute('aria-pressed', 'false');
+		};
+		const advance = () => {
+			index += 1;
+			if (index >= steps.length) {
+				stop(true);
+				return;
+			}
+			mark(index);
+			const step = steps[index];
+			const say = step.dataset.say ?? '';
+			status.textContent = say;
+			const box = step.getBoundingClientRect();
+			if (box.top < 0 || box.bottom > window.innerHeight) {
+				step.scrollIntoView({ block: 'nearest', behavior: reduce.matches ? 'auto' : 'smooth' });
+			}
+			timer = window.setTimeout(advance, Math.min(MAX, Math.max(MIN, say.length * pace)));
+		};
+
+		button.addEventListener('click', () => {
+			if (timer) {
+				stop(false);
+				return;
+			}
+			figure.setAttribute('data-playing', '');
+			label.textContent = button.dataset.stop ?? '';
+			button.setAttribute('aria-pressed', 'true');
+			advance();
+		});
+		button.hidden = false;
+	}
+
+	document.querySelectorAll<HTMLElement>('[data-run]').forEach(setup);
+</script>
+
+<style is:global>
+	.rd {
+		--rd-bg: var(--sl-color-bg-nav);
+		--rd-plate: var(--rd-bg);
+		--rd-num: 2rem;
+		--rd-min: 19rem;
+		--rd-frame: 0.7rem;
+		container: rd / inline-size;
+		margin: 1.5rem 0 2rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.9rem;
+		background: var(--rd-bg);
+	}
+	.rd-tone-you {
+		--tone: var(--sl-color-gray-2);
+	}
+	.rd-tone-runner {
+		--tone: var(--sl-color-white);
+	}
+	.rd-tone-agent {
+		--tone: var(--sl-color-accent);
+	}
+	.rd-tone-check,
+	.rd-tone-judge {
+		--tone: var(--ws-peach);
+	}
+	.rd-tone-files {
+		--tone: var(--sl-color-gray-3);
+	}
+	.rd-tone-muted {
+		--tone: var(--sl-color-gray-4);
+	}
+
+	.rd-head {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 0.55rem 0.75rem;
+		margin: 0;
+		padding: 0.75rem 1rem 0.8rem;
+		border-bottom: 1px solid var(--sl-color-gray-5);
+	}
+	.rd-command {
+		grid-column: 1 / -1;
+		grid-row: 2;
+		justify-self: start;
+	}
+	.rd-title {
+		font-size: var(--sl-text-xs);
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--sl-color-text-accent);
+	}
+	.rd-command {
+		padding: 0.2rem 0.55rem;
+		border-radius: 0.4rem;
+		background: var(--sl-color-gray-6);
+		color: var(--sl-color-gray-1);
+		font-family: var(--sl-font-mono);
+		font-size: 0.78rem;
+		line-height: 1.45;
+		overflow-wrap: anywhere;
+	}
+	.rd-prompt {
+		color: var(--sl-color-gray-3);
+		user-select: none;
+	}
+	.rd-play {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.4rem;
+		padding: 0.3rem 0.75rem;
+		border: 1px solid var(--sl-color-gray-4);
+		border-radius: 999px;
+		background: transparent;
+		color: var(--sl-color-text-accent);
+		font: inherit;
+		font-size: 0.78rem;
+		font-weight: 600;
+		line-height: 1.2;
+		cursor: pointer;
+		transition:
+			border-color 150ms ease-out,
+			background-color 150ms ease-out;
+	}
+	.rd-play[hidden] {
+		display: none;
+	}
+	.rd-play:hover,
+	.rd-play[aria-pressed='true'] {
+		border-color: var(--sl-color-accent);
+		background: color-mix(in srgb, var(--sl-color-accent) 10%, transparent);
+	}
+	.rd-play:focus-visible {
+		outline: 2px solid var(--sl-color-accent);
+		outline-offset: 2px;
+	}
+
+	.rd-body {
+		padding: 1rem 1rem 1.15rem;
+	}
+	.rd-actors,
+	.rd-steps {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.rd-actors > li::before,
+	.rd-steps > li::before {
+		content: none !important;
+	}
+	.rd-actors {
+		display: grid;
+		grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+		margin-left: var(--rd-num);
+	}
+	.rd-actor {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.25rem;
+		min-width: 0;
+		margin: 0 !important;
+		padding: 0 0.25rem;
+		text-align: center;
+	}
+	.rd-actor-icon {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		border: 1px solid color-mix(in srgb, var(--tone) 38%, transparent);
+		border-radius: 0.55rem;
+		background: color-mix(in srgb, var(--tone) 14%, var(--rd-bg));
+		color: var(--tone);
+	}
+	.rd-actor-name {
+		color: var(--sl-color-white);
+		font-size: 0.8rem;
+		font-weight: 700;
+		line-height: 1.25;
+		overflow-wrap: anywhere;
+	}
+	.rd-actor-note {
+		color: var(--sl-color-gray-3);
+		font-size: 0.75rem;
+		line-height: 1.3;
+		overflow-wrap: anywhere;
+	}
+	.rd .rd-actor-note code {
+		font-size: 0.72rem;
+		white-space: normal;
+		overflow-wrap: anywhere;
+	}
+
+	.rd-track {
+		position: relative;
+		padding-top: 0.75rem;
+	}
+	.rd-lifelines {
+		position: absolute;
+		inset: 0 0 0 var(--rd-num);
+	}
+	.rd-lifelines > span {
+		position: absolute;
+		top: 0;
+		bottom: 0;
+		left: calc((var(--at) - 0.5) / var(--n) * 100%);
+		border-left: 1px dashed var(--sl-color-gray-5);
+	}
+	.rd-steps {
+		position: relative;
+		display: grid;
+		gap: 0.45rem;
+	}
+	.rd-step {
+		display: grid;
+		grid-template-columns: var(--rd-num) minmax(0, 1fr);
+		align-items: center;
+		margin: 0 !important;
+		transition: opacity 240ms ease-out;
+	}
+	.rd-num {
+		display: grid;
+		place-items: center;
+		width: 1.4rem;
+		height: 1.4rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 50%;
+		background: var(--rd-plate);
+		color: var(--sl-color-gray-2);
+		font-size: 0.7rem;
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		transition:
+			background-color 200ms ease-out,
+			border-color 200ms ease-out,
+			color 200ms ease-out;
+	}
+	.rd-lane {
+		min-width: 0;
+	}
+	.rd-msg,
+	.rd-note {
+		--rd-w: min(100%, max(var(--rd-min), calc((var(--hi) - var(--lo)) / var(--n) * 100%)));
+		--rd-mid: calc((var(--lo) + var(--hi) - 1) / 2 / var(--n) * 100%);
+		width: var(--rd-w);
+		margin-left: clamp(0%, calc(var(--rd-mid) - var(--rd-w) / 2), calc(100% - var(--rd-w)));
+	}
+	.rd-msg {
+		padding: 0.05rem 0.4rem;
+		border-radius: 0.35rem;
+		background: var(--rd-plate);
+		text-align: center;
+		text-wrap: balance;
+	}
+	.rd-note {
+		--rd-w: min(100%, max(var(--rd-min), calc(1.6 / var(--n) * 100%)));
+		padding: 0.5rem 0.65rem;
+		border-radius: 0.5rem;
+		background: color-mix(in srgb, var(--tone) 15%, var(--rd-plate));
+		text-wrap: pretty;
+		transition: background-color 200ms ease-out;
+	}
+	.rd-who {
+		display: none;
+	}
+	.rd-text {
+		color: var(--sl-color-white);
+		font-size: 0.85rem;
+		font-weight: 600;
+		line-height: 1.35;
+	}
+	.rd-detail {
+		display: block;
+		margin-top: 0.15rem;
+		color: var(--sl-color-gray-2);
+		font-size: 0.76rem;
+		line-height: 1.4;
+	}
+	.rd code {
+		padding: 0.05em 0.3em;
+		border: 0;
+		border-radius: 0.25rem;
+		background: color-mix(in srgb, var(--sl-color-gray-5) 55%, transparent);
+		font-size: 0.72rem;
+		white-space: nowrap;
+	}
+	.rd .rd-command {
+		padding: 0.2rem 0.55rem;
+		border-radius: 0.4rem;
+		background: var(--sl-color-gray-6);
+		font-size: 0.78rem;
+	}
+	.rd-note {
+		position: relative;
+	}
+	.rd-note .rd-badge {
+		position: absolute;
+		top: -0.6rem;
+		right: 0.5rem;
+		margin: 0;
+	}
+	.rd-badge {
+		display: inline-block;
+		margin-left: 0.35rem;
+		white-space: nowrap;
+		padding: 0 0.4rem;
+		border-radius: 999px;
+		background: var(--sl-color-accent);
+		color: var(--sl-color-black);
+		font-size: 0.7rem;
+		font-weight: 700;
+		line-height: 1.15rem;
+		vertical-align: 0.1em;
+	}
+	.rd-step.state-changed .rd-badge {
+		background: var(--ws-peach);
+	}
+	.rd-step.state-muted .rd-text,
+	.rd-step.state-muted .rd-detail {
+		color: var(--sl-color-gray-3);
+	}
+	.rd-step.state-muted .rd-badge {
+		border: 1px solid var(--sl-color-gray-4);
+		background: transparent;
+		color: var(--sl-color-gray-2);
+	}
+	.rd-arrow {
+		--rd-line: color-mix(in srgb, var(--tone) 65%, var(--sl-color-gray-3));
+		position: relative;
+		display: block;
+		width: calc((var(--hi) - var(--lo)) / var(--n) * 100%);
+		height: 10px;
+		margin-top: 0.2rem;
+		margin-left: calc((var(--lo) - 0.5) / var(--n) * 100%);
+		background: linear-gradient(var(--rd-line), var(--rd-line)) center / 100% 2px no-repeat;
+	}
+	.rd-arrow::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		width: 9px;
+		height: 10px;
+		background: var(--rd-line);
+	}
+	.rd-step.is-right .rd-arrow::after {
+		right: 0;
+		clip-path: polygon(0 0, 100% 50%, 0 100%);
+	}
+	.rd-step.is-left .rd-arrow::after {
+		left: 0;
+		clip-path: polygon(100% 0, 0 50%, 100% 100%);
+	}
+	.rd-step.state-muted .rd-arrow {
+		background: none;
+	}
+	.rd-step.state-muted .rd-arrow::before {
+		content: '';
+		position: absolute;
+		inset: 4px 0 auto;
+		border-top: 2px dashed var(--rd-line);
+	}
+	.rd-repeat {
+		position: relative;
+		margin: 0.6rem calc(-1 * var(--rd-frame)) 0.2rem !important;
+		padding: 1.2rem calc(var(--rd-frame) - 1px) 0.7rem;
+		border: 1px solid color-mix(in srgb, var(--sl-color-accent) 42%, transparent);
+		border-radius: 0.75rem;
+	}
+	.rd-repeat-label {
+		position: absolute;
+		top: -0.68rem;
+		left: 0.8rem;
+		padding: 0.05rem 0.55rem;
+		border: 1px solid color-mix(in srgb, var(--sl-color-accent) 42%, transparent);
+		border-radius: 999px;
+		background: var(--rd-bg);
+		color: var(--sl-color-text-accent);
+		font-size: 0.75rem;
+		font-weight: 700;
+		line-height: 1.2rem;
+	}
+	.rd-caption {
+		margin: 0;
+		padding: 0 1rem 0.9rem;
+		color: var(--sl-color-gray-3);
+		font-size: var(--sl-text-sm);
+		text-wrap: pretty;
+	}
+	.rd-sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.rd[data-playing] .rd-step {
+		opacity: 0.3;
+	}
+	.rd[data-playing] .rd-step.is-done {
+		opacity: 0.62;
+	}
+	.rd[data-playing] .rd-step.is-current {
+		opacity: 1;
+	}
+	.rd[data-playing] .rd-step.is-current .rd-num {
+		border-color: var(--sl-color-accent);
+		background: var(--sl-color-accent);
+		color: var(--sl-color-black);
+	}
+	.rd[data-playing] .rd-step.is-current .rd-arrow {
+		--rd-line: var(--sl-color-accent);
+		animation: rd-draw-right 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+	}
+	.rd[data-playing] .rd-step.is-current.is-left .rd-arrow {
+		animation-name: rd-draw-left;
+	}
+	.rd[data-playing] .rd-step.is-current .rd-note {
+		background: color-mix(in srgb, var(--sl-color-accent) 24%, var(--rd-plate));
+		animation: rd-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+	}
+	@keyframes rd-draw-right {
+		from {
+			clip-path: inset(0 100% 0 0);
+		}
+		to {
+			clip-path: inset(0 0 0 0);
+		}
+	}
+	@keyframes rd-draw-left {
+		from {
+			clip-path: inset(0 0 0 100%);
+		}
+		to {
+			clip-path: inset(0 0 0 0);
+		}
+	}
+	@keyframes rd-rise {
+		from {
+			opacity: 0.4;
+			transform: translateY(4px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.rd[data-playing] .rd-step.is-current .rd-arrow,
+		.rd[data-playing] .rd-step.is-current .rd-note {
+			animation: none;
+		}
+	}
+
+	@container rd (max-width: 18rem) {
+		.rd code {
+			white-space: normal;
+			overflow-wrap: anywhere;
+		}
+	}
+	@container rd (max-width: 31rem) {
+		.rd-actors {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.45rem 0.9rem;
+			margin-left: 0;
+		}
+		.rd-actor {
+			flex-direction: row;
+			gap: 0.4rem;
+			padding: 0;
+			text-align: left;
+		}
+		.rd-actor-icon {
+			width: 1.6rem;
+			height: 1.6rem;
+		}
+		.rd-actor-note,
+		.rd-lifelines,
+		.rd-arrow {
+			display: none;
+		}
+		.rd-track {
+			padding-top: 1rem;
+		}
+		.rd-step {
+			align-items: start;
+		}
+		.rd-msg,
+		.rd-note {
+			width: auto;
+			margin-left: 0;
+			text-align: left;
+		}
+		.rd-msg {
+			padding: 0;
+			background: none;
+			text-wrap: pretty;
+		}
+		.rd-who {
+			display: block;
+			margin-bottom: 0.1rem;
+			color: color-mix(in srgb, var(--tone) 70%, var(--sl-color-gray-2));
+			font-size: 0.75rem;
+			font-weight: 700;
+			letter-spacing: 0.02em;
+		}
+	}
+</style>

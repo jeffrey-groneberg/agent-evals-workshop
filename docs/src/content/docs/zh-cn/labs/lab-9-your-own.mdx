@@ -8,6 +8,7 @@ sidebar:
 import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="45 分钟或更长，自定进度" cost="由你决定" uses="lab-files/lab-9/my-first.eval.yaml" />
 
@@ -29,6 +30,27 @@ release-notes 技能（skill）只是练手。现在，把同样的循环应用�
   checks={{ text: '你自己的：答案、运行记录、工作区', state: 'new' }}
   judge={{ text: '可选，需先校准' }}
   results={{ text: '同样的文件和仪表板' }}
+/>
+
+<RunDiagram
+  command="vally eval -e evals/my-first.eval.yaml"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'agent', name: '你的智能体', icon: 'laptop', tone: 'agent', note: '技能、指令或工具' },
+    { id: 'checks', name: '你的检查项', icon: 'approve-check', tone: 'check', note: '优先代码检查，必要时用评审' },
+    { id: 'results', name: '结果', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '启动运行', detail: '你的评估文件：一个真实任务、你的文件、你的检查项。', state: 'new' },
+    { from: 'vally', text: '创建全新的工作区', detail: '带有你的技能和任务需要的文件。', state: 'new' },
+    { from: 'vally', to: 'agent', text: '发送你的任务', detail: '真实用户会输入的请求，不带提示。' },
+    { from: 'agent', to: 'vally', text: '回答', detail: 'Vally 保留答案、运行记录和工作区。' },
+    { from: 'vally', to: 'checks', text: '交出证据', detail: '交给你事先用已知答案测试过的检查项。' },
+    { from: 'checks', to: 'vally', text: '通过或失败，并附上证据' },
+    { from: 'vally', to: 'results', text: '写入结果', detail: '像练习 0 到 5 那样阅读结果，然后改进评估或智能体。' },
+  ]}
+  repeat={{ first: 2, last: 6, label: '对每次试验：三次或更多' }}
 />
 
 ## 选好第一个目标

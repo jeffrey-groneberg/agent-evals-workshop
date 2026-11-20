@@ -4,7 +4,7 @@ description: Prove that a change made the difference with a baseline, variants a
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
-import Flow from '../../../components/Flow.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![Two identical lanes, each with the same requests and the same teal robot agent. Only the instruction sheet differs: the right one has one revised line. The left lane ends in three red crosses, the right lane in three green checks.](../../../assets/comparing.jpg)
@@ -19,13 +19,22 @@ You changed a skill, and the eval passes now. Was it your change, or luck, or so
 - A **variant** is an "after": the same eval with one deliberate change, such as a fixed skill, another model or a reworded prompt.
 - Everything else stays identical: the tasks, the graders, the model, the settings and the number of trials.
 
-<Flow
-  label="A controlled experiment"
+<RunDiagram
+  title={'What happens in an experiment'}
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'baseline', name: 'Baseline', icon: 'puzzle', tone: 'muted', note: 'the "before"' },
+    { id: 'variant', name: 'Variant', icon: 'puzzle', tone: 'agent', note: 'one deliberate change' },
+    { id: 'report', name: 'Report', icon: 'analytics', tone: 'files' },
+  ]}
   steps={[
-    { label: 'Same eval', detail: 'Same tasks, graders and settings', tone: 'input' },
-    { label: 'Baseline', detail: 'The original skill', tone: 'muted' },
-    { label: 'Variant', detail: 'The fixed skill: the only difference', tone: 'agent' },
-    { label: 'Report', detail: 'Pass rates side by side, with the difference', tone: 'result' },
+    { from: 'you', to: 'vally', text: 'Starts the experiment', detail: 'One eval, a baseline and a variant.' },
+    { from: 'vally', to: 'baseline', text: 'Runs the eval', detail: 'Several trials of the original setup.' },
+    { from: 'baseline', to: 'vally', text: 'Verdicts, tokens, time' },
+    { from: 'vally', to: 'variant', text: 'Runs the same eval', detail: 'Everything identical except the one change.' },
+    { from: 'variant', to: 'vally', text: 'Verdicts, tokens, time' },
+    { from: 'vally', to: 'report', text: 'Compares them', detail: 'Pass rates side by side, with the difference.' },
   ]}
 />
 

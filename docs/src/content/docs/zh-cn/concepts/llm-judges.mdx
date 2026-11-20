@@ -4,7 +4,7 @@ description: LLM 评审如何依据评分标准（rubric）为答案评分、如
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
-import Flow from '../../../../components/Flow.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![桃色的机器人评审坐在桌前，正用放大镜查看一张发布说明卡片，旁边放着夹有评分标准的写字板和一架天平；青绿色的机器人智能体拿着下一张卡片在一旁等候。](../../../../assets/llm-judges.jpg)
@@ -13,13 +13,19 @@ import Flow from '../../../../components/Flow.astro';
 
 有些质量要求无法靠字符串匹配来检查。发布说明是否以一句摘要*开头*？语气是否友好？某条说明是“宣布”了 CT-102，还是只解释了为什么没有包含它？对于这类问题，你可以请第二个模型阅读答案并做出判断。这个模型就是 **LLM 评审**。
 
-<Flow
-  label="LLM 评审如何为一次试验评分"
+<RunDiagram
+  title={'LLM 评审如何为一次试验评分'}
+  actors={[
+    { id: 'agent', name: '智能体', icon: 'laptop', tone: 'agent' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'judge', name: 'LLM 评审', icon: 'star', tone: 'judge', note: '评审模型' },
+  ]}
   steps={[
-    { label: '答案', detail: '智能体的输出（必要时还包括它的运行记录）', tone: 'agent' },
-    { label: '评分标准', detail: '你的评判标准，每行一条', tone: 'input' },
-    { label: '评审模型', detail: '阅读两者，逐条做出判定', tone: 'grader' },
-    { label: '判定结果', detail: '通过或失败、分数，以及判定理由', tone: 'result' },
+    { from: 'agent', to: 'vally', text: '完成一次试验', detail: '留下运行记录：输出、指标和会话时间线。' },
+    { from: 'vally', to: 'judge', text: '发送证据和你的评分标准', detail: '评分标准就是评审的全部规范。' },
+    { from: 'judge', text: '逐条判定', detail: '对照评分标准的每一行阅读证据。' },
+    { from: 'judge', to: 'vally', text: '判定结果、分数和理由', detail: '使用 <code>scoring: binary</code> 时，结果是通过或失败。' },
+    { from: 'vally', text: '记录评分器结果', detail: '理由就是失败时你要阅读的证据。' },
   ]}
 />
 

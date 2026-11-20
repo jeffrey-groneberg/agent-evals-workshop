@@ -4,6 +4,7 @@ description: What Vally does, what GitHub Copilot Evals adds on top, how they sh
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![A dark terminal window on a box of gears, the eval engine, connected by a teal cable to a chat assistant panel with a sparkle; one shared document file lies between them.](../../../assets/tools.jpg)
@@ -11,6 +12,24 @@ import { LinkCard } from '@astrojs/starlight/components';
 </figure>
 
 The workshop uses two tools that work together. **Vally** is the engine that runs evals. **GitHub Copilot Evals** is an assistant on top: Copilot helps you create, review, improve, run and compare evals, and every run still happens in Vally.
+
+<RunDiagram
+  title={'How the two tools work together'}
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'evals', name: 'GitHub Copilot Evals', icon: 'comment-alt', tone: 'agent', note: 'the assistant' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the engine' },
+    { id: 'files', name: 'Your files', icon: 'document', tone: 'files', note: 'evals and results' },
+  ]}
+  steps={[
+    { from: 'you', to: 'evals', text: 'Asks in plain language', detail: 'Create, review, improve, run or compare an eval.' },
+    { from: 'evals', to: 'files', text: 'Drafts or reviews the eval file', detail: 'Shows you the full file before it saves anything.' },
+    { from: 'you', to: 'vally', text: 'Or runs it directly', detail: '<code>vally eval</code>, on the same file.' },
+    { from: 'evals', to: 'vally', text: 'Runs it after your approval', detail: 'On the bounded runner or the full engine.' },
+    { from: 'vally', to: 'files', text: 'Writes the results', detail: 'In <code>vally-results/</code>, either way.' },
+    { from: 'evals', to: 'you', text: 'Explains and compares', detail: 'Reading and comparing saved runs makes no model calls.' },
+  ]}
+/>
 
 ## Vally: the engine
 

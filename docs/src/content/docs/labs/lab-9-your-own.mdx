@@ -8,6 +8,7 @@ sidebar:
 import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="45 minutes or more, self-paced" cost="Your choice" uses="lab-files/lab-9/my-first.eval.yaml" />
 
@@ -29,6 +30,27 @@ The release-notes skill was practice. Now apply the same loop to something you b
   checks={{ text: 'Yours: answer, transcript, workspace', state: 'new' }}
   judge={{ text: 'Optional, calibrated first' }}
   results={{ text: 'The same files and dashboard' }}
+/>
+
+<RunDiagram
+  command="vally eval -e evals/my-first.eval.yaml"
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'agent', name: 'Your agent', icon: 'laptop', tone: 'agent', note: 'skill, instructions or tool' },
+    { id: 'checks', name: 'Your checks', icon: 'approve-check', tone: 'check', note: 'code first, a judge if needed' },
+    { id: 'results', name: 'Results', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'Your eval file: a real task, your files, your checks.', state: 'new' },
+    { from: 'vally', text: 'Builds a fresh workspace', detail: 'With your skill and the files the task needs.', state: 'new' },
+    { from: 'vally', to: 'agent', text: 'Sends your task', detail: 'The request a real user would type, without hints.' },
+    { from: 'agent', to: 'vally', text: 'Answers', detail: 'Vally keeps the answer, the transcript and the workspace.' },
+    { from: 'vally', to: 'checks', text: 'Hands over the evidence', detail: 'To checks you tested first on known answers.' },
+    { from: 'checks', to: 'vally', text: 'Pass or fail, with evidence' },
+    { from: 'vally', to: 'results', text: 'Writes the results', detail: 'Read them as in Labs 0 to 5, then improve the eval or the agent.' },
+  ]}
+  repeat={{ first: 2, last: 6, label: 'For each trial: three or more' }}
 />
 
 ## Choose a good first target

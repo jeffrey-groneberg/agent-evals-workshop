@@ -10,6 +10,7 @@ import LabMeta from '../../../../components/LabMeta.astro';
 import EvalMap from '../../../../components/EvalMap.astro';
 import Pieces from '../../../../components/Pieces.astro';
 import Flow from '../../../../components/Flow.astro';
+import RunDiagram from '../../../../components/RunDiagram.astro';
 
 <LabMeta time="15 分钟" cost="无：模拟执行器（mock）不调用任何模型" uses="evals/release-notes-control.eval.yaml" />
 
@@ -29,6 +30,26 @@ import Flow from '../../../../components/Flow.astro';
   trials={{ text: '每个答案 1 次：模拟执行器的结果永远不变' }}
   checks={{ text: '<code>output-contains</code>，肯定检查和否定检查', state: 'new' }}
   results={{ text: '终端、<code>--verbose</code>、试验记录、仪表板' }}
+/>
+
+<RunDiagram
+  command="vally eval -e evals/release-notes-control.eval.yaml"
+  actors={[
+    { id: 'you', name: '你', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: '评估运行器' },
+    { id: 'mock', name: '模拟执行器', icon: 'document', tone: 'agent', note: '不用模型' },
+    { id: 'checks', name: '检查项', icon: 'approve-check', tone: 'check', note: '每个答案三项' },
+    { id: 'results', name: '结果', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: '启动运行', detail: '四个任务，每个都有一个已知答案，各运行一次试验。' },
+    { from: 'vally', to: 'mock', text: '发送提示词', detail: '提示词就是已知答案，一字不差。', state: 'changed' },
+    { from: 'mock', to: 'vally', text: '把提示词原样作为答案返回', detail: '不用模型，不消耗 token，每次都一样。', state: 'changed' },
+    { from: 'vally', to: 'checks', text: '交出答案', detail: '是否包含 CT-101 和 CT-103？以及你添加的否定检查：是否不含 CT-102？', state: 'new' },
+    { from: 'checks', to: 'vally', text: '通过或失败，并附上证据', detail: '正确答案和另一种可接受的答案应当通过；错误答案和空答案应当失败。' },
+    { from: 'vally', to: 'results', text: '写入结果', detail: '判定结果的模式会告诉你：你的检查项能否区分好坏。' },
+  ]}
+  repeat={{ first: 2, last: 5, label: '对 4 个已知答案中的每一个' }}
 />
 
 ## 你将用到的要素

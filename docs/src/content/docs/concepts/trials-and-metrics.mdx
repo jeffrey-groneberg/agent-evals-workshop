@@ -4,6 +4,7 @@ description: Why you run every task several times, and what pass rate, pass@k an
 ---
 
 import { LinkCard } from '@astrojs/starlight/components';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <figure class="illustration">
   ![A results dashboard: the teal robot with a stack of requests, a grid of trial results with mostly green checks and a few red crosses, and a donut chart and a bar chart for the pass rate.](../../../assets/trials.jpg)
@@ -11,6 +12,25 @@ import { LinkCard } from '@astrojs/starlight/components';
 </figure>
 
 An agent can give a different answer every time you ask it the same thing. So a single run tells you only what *can* happen, not what *usually* happens. That's why evals run each task several times. Each run is a **trial**.
+
+<RunDiagram
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'agent', name: 'Agent', icon: 'laptop', tone: 'agent' },
+    { id: 'checks', name: 'Checks', icon: 'approve-check', tone: 'check' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: 'Asks for several trials', detail: '<code>runs: 3</code> in the eval file, or <code>--runs 5</code> for one run.' },
+    { from: 'vally', to: 'agent', text: 'Sends the same task', detail: 'In a fresh workspace every time.' },
+    { from: 'agent', to: 'vally', text: 'Answers', detail: 'Not always the same way.' },
+    { from: 'vally', to: 'checks', text: 'Hands over the evidence' },
+    { from: 'checks', to: 'vally', text: 'Pass or fail', detail: 'One verdict per trial.' },
+    { from: 'vally', text: 'Computes the metrics', detail: 'Pass rate: the share that passed. pass@k: did any pass? pass^k: the chance that all k pass.' },
+    { from: 'vally', to: 'you', text: 'Reports them per task', detail: 'In <code>eval-results.md</code> and on the dashboard.' },
+  ]}
+  repeat={{ first: 2, last: 5, label: 'For each trial, in parallel' }}
+/>
 
 ## Why one run isn't enough
 

@@ -9,7 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import EvalMap from '../../../components/EvalMap.astro';
 import Pieces from '../../../components/Pieces.astro';
-import Flow from '../../../components/Flow.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="15 minutes, more at home" cost="Several Copilot prompts and two short runs" uses="Copilot CLI with the Evals plugin" />
 
@@ -32,6 +32,29 @@ You've written, checked, run, fixed and judged evals by hand. Now Copilot helps.
   results={{ text: 'Copilot\'s summary, Vally\'s files and the plugin\'s record', state: 'changed' }}
 />
 
+<RunDiagram
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'copilot', name: 'Copilot CLI', icon: 'comment-alt', tone: 'runner', note: 'with the Evals plugin' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the full engine' },
+    { id: 'agent', name: 'Agent under test', icon: 'laptop', tone: 'agent', note: 'GitHub Copilot' },
+    { id: 'results', name: 'Results', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'copilot', text: 'Asks in plain language', detail: '"Run the eval you just created."' },
+    { from: 'copilot', text: 'Prepares the run', detail: 'The run skill reads your eval file. Three trials and a judge mean the full engine.', state: 'new' },
+    { from: 'copilot', to: 'you', text: 'Shows the review', detail: 'The runner, the trials, the models, the cost, and what isn\'t restricted.', state: 'new' },
+    { from: 'you', to: 'copilot', text: 'Approves the run', detail: 'Each run needs its own approval.' },
+    { from: 'copilot', to: 'vally', text: 'Starts Vally', detail: 'With the runner you set up and your stored GitHub CLI sign-in.' },
+    { from: 'vally', to: 'agent', text: 'Sends the prompt', detail: 'In a fresh workspace, built from the plugin\'s copy of your files.' },
+    { from: 'agent', to: 'vally', text: 'Answers, then gets graded', detail: 'By the checks and the judge in your draft.' },
+    { from: 'vally', to: 'results', text: 'Writes the results', detail: '<code>vally-results/eval-run-&lt;id&gt;/</code>, without <code>results.jsonl</code>.' },
+    { from: 'copilot', to: 'you', text: 'Explains the result', detail: 'From its own record in <code>.copilot/evals/results/</code>.', state: 'new' },
+  ]}
+  repeat={{ first: 6, last: 7, label: 'For each of the 3 trials' }}
+  caption='A small eval, with one trial and no judge, runs on the bounded runner instead, with a shorter review.'
+/>
+
 ## The pieces you'll work with
 
 <Pieces
@@ -51,17 +74,6 @@ You've written, checked, run, fixed and judged evals by hand. Now Copilot helps.
 Copilot can draft an eval in a minute. Whether that eval measures the right thing is still your call, and you now know what to look for: a clear task, the right environment, negative checks, checks on the transcript and the workspace, enough trials. This lab ends the workshop where you'll work from now on: with Copilot doing the typing and you doing the judging.
 
 ## How Copilot runs an eval
-
-<Flow
-  label="What happens when you ask Copilot to run an eval"
-  steps={[
-    { label: 'You ask', detail: 'in plain language', tone: 'input' },
-    { label: 'Copilot plans', detail: 'the run skill', tone: 'agent' },
-    { label: 'Runner chosen', detail: 'by the eval file', tone: 'grader' },
-    { label: 'You approve', detail: 'the exact plan', tone: 'input' },
-    { label: 'Vally runs it', detail: 'then Copilot explains', tone: 'result' },
-  ]}
-/>
 
 Copilot doesn't run evals itself: it hands them to Vally, through one of two runners.
 

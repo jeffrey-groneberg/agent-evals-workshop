@@ -9,6 +9,7 @@ import { Steps } from '@astrojs/starlight/components';
 import LabMeta from '../../../components/LabMeta.astro';
 import Pieces from '../../../components/Pieces.astro';
 import EvalMap from '../../../components/EvalMap.astro';
+import RunDiagram from '../../../components/RunDiagram.astro';
 
 <LabMeta time="30 minutes" cost="3 Copilot runs" uses="evals/release-notes.eval.yaml" />
 
@@ -29,6 +30,28 @@ Your checks work. Now they meet the real agent: GitHub Copilot, with the release
   trials={{ text: '3, in parallel', state: 'new' }}
   checks={{ text: 'Answer, transcript and workspace', state: 'new' }}
   results={{ text: 'Dashboard, trial records, Copilot\'s log', state: 'new' }}
+/>
+
+<RunDiagram
+  command="vally eval -e evals/release-notes.eval.yaml"
+  actors={[
+    { id: 'you', name: 'You', icon: 'pencil', tone: 'you' },
+    { id: 'vally', name: 'Vally', icon: 'setting', tone: 'runner', note: 'the eval runner' },
+    { id: 'agent', name: 'GitHub Copilot', icon: 'laptop', tone: 'agent', note: '<code>release-notes</code> skill' },
+    { id: 'checks', name: 'Checks', icon: 'approve-check', tone: 'check', note: 'five code checks' },
+    { id: 'results', name: 'Results', icon: 'analytics', tone: 'files', note: '<code>vally-results/</code>' },
+  ]}
+  steps={[
+    { from: 'you', to: 'vally', text: 'Starts the run', detail: 'The eval file asks for three trials: <code>runs: 3</code>.' },
+    { from: 'vally', text: 'Builds a fresh workspace', detail: 'A copy of the skill and of <code>backlog.json</code>, new for every trial.', state: 'new' },
+    { from: 'vally', to: 'agent', text: 'Sends the prompt', detail: '"Write the release notes for this release from backlog.json."' },
+    { from: 'agent', text: 'Does the work', detail: 'Invokes the skill, reads <code>backlog.json</code>, writes the notes. The transcript records every step.', state: 'new' },
+    { from: 'agent', to: 'vally', text: 'Answers', detail: 'Vally keeps the answer, the transcript and the workspace.' },
+    { from: 'vally', to: 'checks', text: 'Hands over the evidence', detail: 'Three checks read the answer, one the transcript, one the workspace.', state: 'new' },
+    { from: 'checks', to: 'vally', text: 'Pass or fail, with evidence', detail: 'The trial passes only if all five pass: <code>threshold: 1</code>.' },
+    { from: 'vally', to: 'results', text: 'Writes the results', detail: '<code>eval-results.md</code>, <code>results.jsonl</code> and one folder per trial.' },
+  ]}
+  repeat={{ first: 2, last: 7, label: 'For each of the 3 trials, in parallel' }}
 />
 
 ## The pieces you'll work with
